@@ -2,10 +2,10 @@
 
 import { useState } from "react";
 import { KeyRound, Plus, Trash2 } from "lucide-react";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
+import { Alert, AlertDescription, AlertTitle } from "@f2b/ui";
+import { Badge } from "@f2b/ui";
+import { Button } from "@f2b/ui";
+import { Card, CardContent } from "@f2b/ui";
 import {
   Table,
   TableBody,
@@ -13,7 +13,7 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "@/components/ui/table";
+} from "@f2b/ui";
 import { MOCK_API_KEYS } from "@/lib/mock-data";
 
 export default function ApiKeysPage() {

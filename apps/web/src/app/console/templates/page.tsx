@@ -1,8 +1,8 @@
 import Link from "next/link";
 import { LayoutTemplate, Play, Upload } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@f2b/ui";
+import { Button } from "@f2b/ui";
+import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@f2b/ui";
 import { MOCK_TEMPLATES } from "@/lib/mock-data";
 
 export default function TemplatesPage() {

@@ -9,9 +9,9 @@ import {
   Plus,
   Zap,
 } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Button } from "@f2b/ui";
+import { Card, CardContent, CardHeader, CardTitle } from "@f2b/ui";
+import { Alert, AlertDescription } from "@f2b/ui";
 import {
   Table,
   TableBody,
@@ -19,7 +19,7 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "@/components/ui/table";
+} from "@f2b/ui";
 import {
   MOCK_SANDBOXES,
   MOCK_USAGE,

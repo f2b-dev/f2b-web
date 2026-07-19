@@ -1,5 +1,5 @@
 import { ChartColumn, Clock3, Code2 } from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@f2b/ui";
 import {
   Table,
   TableBody,
@@ -7,7 +7,7 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "@/components/ui/table";
+} from "@f2b/ui";
 import { MOCK_USAGE } from "@/lib/mock-data";
 
 export default function UsagePage() {

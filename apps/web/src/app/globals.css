@@ -1,7 +1,9 @@
 @import "tailwindcss";
 
-/* Monorepo: ensure Tailwind scans app sources for utility classes */
+/* Monorepo: scan app + workspace packages/plugins for utility classes */
 @source "../../**/*.{js,ts,jsx,tsx,mdx}";
+@source "../../../../packages/**/*.{js,ts,jsx,tsx}";
+@source "../../../../plugins/**/*.{js,ts,jsx,tsx}";
 
 @theme {
   --color-brand: #ff5c33;

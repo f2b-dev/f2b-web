@@ -1,7 +1,30 @@
 {
   "name": "@f2b/console-shell",
-  "version": "0.0.1",
+  "version": "0.1.0",
   "private": true,
-  "description": "控制台壳占位；当前实现位于 apps/web/src/components/console-shell.tsx，后续抽包",
-  "scripts": { "typecheck": "echo ok" }
+  "description": "控制台壳：顶栏、侧栏、插件导航注册",
+  "type": "module",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit -p tsconfig.json"
+  },
+  "peerDependencies": {
+    "next": "^15.0.0",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0"
+  },
+  "dependencies": {
+    "@f2b/ui": "workspace:*",
+    "lucide-react": "^0.487.0"
+  },
+  "devDependencies": {
+    "@types/react": "^19.1.0",
+    "@types/react-dom": "^19.1.1",
+    "typescript": "^5.8.3"
+  },
+  "license": "Apache-2.0"
 }

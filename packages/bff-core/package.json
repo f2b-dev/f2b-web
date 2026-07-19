@@ -1,7 +1,20 @@
 {
   "name": "@f2b/bff-core",
-  "version": "0.0.1",
+  "version": "0.1.0",
   "private": true,
-  "description": "BFF 工具占位；当前实现位于 apps/web/src/lib/sandbox-upstream.ts",
-  "scripts": { "typecheck": "echo ok" }
+  "description": "BFF 上游代理与错误映射（仅服务端）",
+  "type": "module",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit -p tsconfig.json"
+  },
+  "devDependencies": {
+    "@types/node": "^22.14.0",
+    "typescript": "^5.8.3"
+  },
+  "license": "Apache-2.0"
 }

@@ -16,11 +16,11 @@ import {
   Trash2,
   Cpu,
 } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Button } from "@f2b/ui";
+import { Card, CardContent } from "@f2b/ui";
+import { Input } from "@f2b/ui";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@f2b/ui";
+import { Alert, AlertDescription } from "@f2b/ui";
 import {
   formatDuration,
   getSandbox,

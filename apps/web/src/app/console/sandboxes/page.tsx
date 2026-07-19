@@ -3,8 +3,8 @@
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { AppWindow, Globe, GlobeLock, Plus, RefreshCw } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
+import { Button } from "@f2b/ui";
+import { Card, CardContent } from "@f2b/ui";
 import {
   Table,
   TableBody,
@@ -12,14 +12,14 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "@/components/ui/table";
+} from "@f2b/ui";
 import {
   formatDuration,
   listSandboxes,
   type ApiSandbox,
 } from "@/lib/sandbox-api";
 import { SandboxStatusTag } from "@/lib/status";
-import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Alert, AlertDescription } from "@f2b/ui";
 
 export default function SandboxesPage() {
   const [rows, setRows] = useState<ApiSandbox[]>([]);

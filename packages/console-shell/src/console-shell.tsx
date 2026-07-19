@@ -5,49 +5,45 @@ import { usePathname } from "next/navigation";
 import {
   Bell,
   BookOpen,
-  Box,
-  ChartColumn,
   ChevronRight,
   CircleHelp,
   Cloud,
   Home,
-  KeyRound,
   LayoutDashboard,
-  LayoutTemplate,
   Plus,
   User,
 } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import {
+  Avatar,
+  AvatarFallback,
+  Badge,
+  Button,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { cn } from "@/lib/utils";
+  cn,
+} from "@f2b/ui";
+import type { ConsolePlugin, NavSection } from "./types";
+import { mergePluginNav, titleFromPlugins } from "./registry";
 
-type NavItem = {
-  href: string;
-  label: string;
-  icon: React.ComponentType<{ className?: string }>;
-  exact?: boolean;
-};
+function isActive(pathname: string, href: string, exact?: boolean) {
+  if (exact) return pathname === href;
+  if (href === "/console") return pathname === "/console";
+  return pathname === href || pathname.startsWith(href + "/");
+}
 
-const NAV: { group: string; items: NavItem[] }[] = [
+const BASE_NAV: NavSection[] = [
   {
     group: "总览",
-    items: [{ href: "/console", label: "概览", icon: LayoutDashboard, exact: true }],
-  },
-  {
-    group: "产品与服务",
     items: [
-      { href: "/console/sandboxes", label: "AI 沙箱", icon: Box },
-      { href: "/console/templates", label: "模板", icon: LayoutTemplate },
-      { href: "/console/keys", label: "API 密钥", icon: KeyRound },
-      { href: "/console/usage", label: "用量", icon: ChartColumn },
+      {
+        href: "/console",
+        label: "概览",
+        icon: LayoutDashboard,
+        exact: true,
+      },
     ],
   },
   {
@@ -59,28 +55,36 @@ const NAV: { group: string; items: NavItem[] }[] = [
   },
 ];
 
-function isActive(pathname: string, href: string, exact?: boolean) {
-  if (exact) return pathname === href;
-  if (href === "/console") return pathname === "/console";
-  return pathname === href || pathname.startsWith(href + "/");
-}
+export type ConsoleShellProps = {
+  children: React.ReactNode;
+  /** 已注册产品插件（导航 / 标题） */
+  plugins?: ConsolePlugin[];
+  /** 顶栏状态徽章文案 */
+  statusBadge?: string;
+  /** 顶栏主 CTA */
+  primaryAction?: { href: string; label: string };
+};
 
-function titleFor(pathname: string) {
-  if (pathname.startsWith("/console/sandboxes/new")) return "创建沙箱";
-  if (pathname.startsWith("/console/sandboxes/")) return "沙箱详情";
-  if (pathname.startsWith("/console/sandboxes")) return "AI 沙箱";
-  if (pathname.startsWith("/console/templates")) return "模板";
-  if (pathname.startsWith("/console/keys")) return "API 密钥";
-  if (pathname.startsWith("/console/usage")) return "用量";
-  return "概览";
-}
-
-export function ConsoleShell({ children }: { children: React.ReactNode }) {
+export function ConsoleShell({
+  children,
+  plugins = [],
+  statusBadge = "mock · 数据面未连接",
+  primaryAction = { href: "/console/sandboxes/new", label: "创建沙箱" },
+}: ConsoleShellProps) {
   const pathname = usePathname();
+  const productNav = mergePluginNav(plugins);
+  // 总览 → 产品插件 → 帮助
+  const nav: NavSection[] = [
+    ...BASE_NAV.filter((s) => s.group === "总览"),
+    ...productNav,
+    ...BASE_NAV.filter((s) => s.group === "帮助"),
+  ];
+  const pageTitle = titleFromPlugins(plugins, pathname, "概览");
+  const productLabel =
+    plugins.find((p) => p.productLabel)?.productLabel ?? "AI 沙箱";
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Aliyun-style dark top bar */}
       <header className="sticky top-0 z-50 flex h-12 items-center justify-between border-b border-slate-800 bg-[#001529] px-4">
         <div className="flex items-center gap-4">
           <Link href="/console" className="flex items-center gap-2 text-white">
@@ -93,13 +97,13 @@ export function ConsoleShell({ children }: { children: React.ReactNode }) {
           <div className="h-4 w-px bg-white/20" />
           <div className="flex items-center gap-1.5 text-[13px] text-white/85">
             <Cloud className="h-4 w-4" />
-            AI 沙箱
+            {productLabel}
           </div>
         </div>
 
         <div className="flex items-center gap-2">
           <Badge className="border-white/15 bg-orange-500/15 text-orange-200 hover:bg-orange-500/15">
-            mock · Cube 未连接
+            {statusBadge}
           </Badge>
           <Button
             asChild
@@ -119,9 +123,9 @@ export function ConsoleShell({ children }: { children: React.ReactNode }) {
             <Bell className="h-4 w-4" />
           </Button>
           <Button asChild size="sm" className="h-7">
-            <Link href="/console/sandboxes/new">
+            <Link href={primaryAction.href}>
               <Plus className="h-3.5 w-3.5" />
-              创建沙箱
+              {primaryAction.label}
             </Link>
           </Button>
           <DropdownMenu>
@@ -139,20 +143,22 @@ export function ConsoleShell({ children }: { children: React.ReactNode }) {
               <DropdownMenuItem>账号信息</DropdownMenuItem>
               <DropdownMenuItem>项目管理</DropdownMenuItem>
               <DropdownMenuSeparator />
-              <DropdownMenuItem className="text-red-600">退出登录</DropdownMenuItem>
+              <DropdownMenuItem className="text-red-600">
+                退出登录
+              </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
       </header>
 
       <div className="flex min-h-[calc(100vh-3rem)]">
-        {/* Light sider */}
         <aside className="sticky top-12 h-[calc(100vh-3rem)] w-[208px] shrink-0 overflow-y-auto border-r border-border bg-white">
           <div className="px-4 pb-2 pt-3 text-xs text-muted-foreground">
-            当前项目 · <span className="font-semibold text-foreground">default</span>
+            当前项目 ·{" "}
+            <span className="font-semibold text-foreground">default</span>
           </div>
           <nav className="px-2 pb-6">
-            {NAV.map((section) => (
+            {nav.map((section) => (
               <div key={section.group} className="mb-3">
                 <div className="px-2 py-1.5 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
                   {section.group}
@@ -192,7 +198,7 @@ export function ConsoleShell({ children }: { children: React.ReactNode }) {
               <ChevronRight className="h-3 w-3" />
               <span>default 项目</span>
               <ChevronRight className="h-3 w-3" />
-              <span className="text-foreground">{titleFor(pathname)}</span>
+              <span className="text-foreground">{pageTitle}</span>
             </div>
           </div>
           <main className="px-5 pb-8 pt-3">{children}</main>

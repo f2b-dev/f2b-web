@@ -1,4 +1,4 @@
-import { Badge } from "@/components/ui/badge";
+import { Badge } from "@f2b/ui";
 import { cn } from "./utils";
 
 export type SandboxStatus =

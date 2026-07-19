@@ -1,4 +1,4 @@
-import { proxyToSandbox } from "@/lib/sandbox-upstream";
+import { proxyToSandbox } from "@f2b/bff-core";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";

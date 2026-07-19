@@ -4,23 +4,23 @@ import { useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, LayoutTemplate, Play } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Switch } from "@/components/ui/switch";
+import { Badge } from "@f2b/ui";
+import { Button } from "@f2b/ui";
+import { Card, CardContent, CardHeader, CardTitle } from "@f2b/ui";
+import { Input } from "@f2b/ui";
+import { Label } from "@f2b/ui";
+import { Switch } from "@f2b/ui";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
-import { Alert, AlertDescription } from "@/components/ui/alert";
+} from "@f2b/ui";
+import { Alert, AlertDescription } from "@f2b/ui";
 import { MOCK_TEMPLATES } from "@/lib/mock-data";
 import { createSandbox } from "@/lib/sandbox-api";
-import { cn } from "@/lib/utils";
+import { cn } from "@f2b/ui";
 
 const TEMPLATE_MAP: Record<string, string> = {
   tpl_base: "base",

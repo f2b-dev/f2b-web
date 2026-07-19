@@ -1,7 +1,27 @@
 {
   "name": "@f2b/plugin-sandbox",
-  "version": "0.0.1",
+  "version": "0.1.0",
   "private": true,
-  "description": "沙箱产品插件占位；路由与页面暂在 apps/web/src/app/console/sandboxes，后续按插件注册表抽离",
-  "scripts": { "typecheck": "echo ok" }
+  "description": "AI 沙箱控制台插件（导航；页面与 BFF 仍挂在 apps/web）",
+  "type": "module",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit -p tsconfig.json"
+  },
+  "peerDependencies": {
+    "react": "^19.0.0"
+  },
+  "dependencies": {
+    "@f2b/console-shell": "workspace:*",
+    "lucide-react": "^0.487.0"
+  },
+  "devDependencies": {
+    "@types/react": "^19.1.0",
+    "typescript": "^5.8.3"
+  },
+  "license": "Apache-2.0"
 }

@@ -44,3 +44,14 @@ http://localhost:3000 — 沙箱列表/创建/终端走 BFF → sandbox。
 - 对外文案不写腾讯 / CubeSandbox
 
 Apache-2.0
+
+## E2E 验收
+
+需 `f2b-sandbox` + `pnpm dev`（或 f2b-infra）：
+
+```bash
+pnpm e2e:bff
+# 或 F2B_WEB_URL=http://127.0.0.1:3000 ./scripts/e2e-bff.sh
+```
+
+覆盖：控制台列表/创建页 200 → BFF 创建 → 命令 `echo e2e-ok` → 详情页 200 → 销毁。

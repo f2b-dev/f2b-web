@@ -18,22 +18,16 @@ import {
   SelectValue,
 } from "@f2b/ui";
 import { Alert, AlertDescription } from "@f2b/ui";
-import { MOCK_TEMPLATES } from "@/lib/mock-data";
+import { PRODUCT_TEMPLATES } from "@/lib/catalog";
 import { createSandbox } from "@/lib/sandbox-api";
 import { cn } from "@f2b/ui";
-
-const TEMPLATE_MAP: Record<string, string> = {
-  tpl_base: "base",
-  tpl_code: "code-interpreter",
-  tpl_browser: "base",
-};
 
 export default function NewSandboxPage() {
   const router = useRouter();
   const [name, setName] = useState(
     "sandbox-" + Math.random().toString(36).slice(2, 7),
   );
-  const [template, setTemplate] = useState("tpl_code");
+  const [template, setTemplate] = useState("code-interpreter");
   const [timeoutMin, setTimeoutMin] = useState(30);
   const [internet, setInternet] = useState(false);
   const [region, setRegion] = useState("cn-hangzhou");
@@ -41,7 +35,7 @@ export default function NewSandboxPage() {
   const [error, setError] = useState<string | null>(null);
 
   const selected = useMemo(
-    () => MOCK_TEMPLATES.find((t) => t.id === template),
+    () => PRODUCT_TEMPLATES.find((t) => t.slug === template),
     [template],
   );
 
@@ -52,7 +46,7 @@ export default function NewSandboxPage() {
     try {
       const sbx = await createSandbox({
         name,
-        template: TEMPLATE_MAP[template] ?? "base",
+        template,
         timeoutMs: timeoutMin * 60_000,
         allowInternetAccess: internet,
         projectId: "default",
@@ -107,13 +101,13 @@ export default function NewSandboxPage() {
               <div className="space-y-2">
                 <Label>模板</Label>
                 <div className="space-y-2">
-                  {MOCK_TEMPLATES.map((t) => {
-                    const active = template === t.id;
+                  {PRODUCT_TEMPLATES.map((t) => {
+                    const active = template === t.slug;
                     return (
                       <button
                         key={t.id}
                         type="button"
-                        onClick={() => setTemplate(t.id)}
+                        onClick={() => setTemplate(t.slug)}
                         className={cn(
                           "flex w-full items-start justify-between rounded-md border p-3 text-left transition",
                           active
@@ -203,8 +197,7 @@ export default function NewSandboxPage() {
             <div>
               模板：{" "}
               <span className="text-foreground">
-                {selected?.name ?? template} →{" "}
-                <code>{TEMPLATE_MAP[template] ?? "base"}</code>
+                {selected?.name ?? template} → <code>{template}</code>
               </span>
             </div>
             <div>

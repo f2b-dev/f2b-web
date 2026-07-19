@@ -1,9 +1,15 @@
 import Link from "next/link";
 import { LayoutTemplate, Play, Upload } from "lucide-react";
-import { Badge } from "@f2b/ui";
-import { Button } from "@f2b/ui";
-import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@f2b/ui";
-import { MOCK_TEMPLATES } from "@/lib/mock-data";
+import {
+  Badge,
+  Button,
+  Card,
+  CardContent,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@f2b/ui";
+import { PRODUCT_TEMPLATES } from "@/lib/catalog";
 
 export default function TemplatesPage() {
   return (
@@ -12,7 +18,7 @@ export default function TemplatesPage() {
         <div>
           <h1 className="text-lg font-semibold">模板</h1>
           <p className="text-sm text-muted-foreground">
-            预置与自定义运行时镜像。创建沙箱时选择模板以固定环境。
+            预置运行时目录（产品配置，非用户 mock）。创建沙箱时选择 template。
           </p>
         </div>
         <Button variant="secondary" disabled>
@@ -22,7 +28,7 @@ export default function TemplatesPage() {
       </div>
 
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-        {MOCK_TEMPLATES.map((t) => (
+        {PRODUCT_TEMPLATES.map((t) => (
           <Card key={t.id} className="flex flex-col">
             <CardHeader className="flex-row items-start justify-between space-y-0">
               <CardTitle className="flex items-center gap-2">
@@ -36,8 +42,12 @@ export default function TemplatesPage() {
               )}
             </CardHeader>
             <CardContent className="flex-1 space-y-3">
-              <p className="min-h-[44px] text-sm text-muted-foreground">{t.description}</p>
-              <p className="font-mono text-[11px] text-muted-foreground">{t.image}</p>
+              <p className="min-h-[44px] text-sm text-muted-foreground">
+                {t.description}
+              </p>
+              <p className="font-mono text-[11px] text-muted-foreground">
+                {t.image}
+              </p>
               <div className="flex flex-wrap gap-1.5">
                 {t.tags.map((tag) => (
                   <Badge key={tag} variant="outline">
@@ -48,7 +58,9 @@ export default function TemplatesPage() {
             </CardContent>
             <CardFooter>
               <Button asChild variant="link" className="h-auto px-0">
-                <Link href="/console/sandboxes/new">
+                <Link
+                  href={`/console/sandboxes/new?template=${encodeURIComponent(t.slug)}`}
+                >
                   <Play className="h-4 w-4" />
                   使用此模板
                 </Link>

@@ -1,5 +1,5 @@
 import { Badge } from "@f2b/ui";
-import { cn } from "./utils";
+import { cn } from "@f2b/ui";
 
 export type SandboxStatus =
   | "provisioning"

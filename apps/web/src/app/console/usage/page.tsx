@@ -1,6 +1,9 @@
 import { ChartColumn, Clock3, Code2 } from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle } from "@f2b/ui";
 import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
   Table,
   TableBody,
   TableCell,
@@ -8,7 +11,8 @@ import {
   TableHeader,
   TableRow,
 } from "@f2b/ui";
-import { MOCK_USAGE } from "@/lib/mock-data";
+import { MOCK_USAGE } from "@/lib/catalog";
+import { MockBanner } from "@/components/mock-banner";
 
 export default function UsagePage() {
   const maxH = Math.max(...MOCK_USAGE.map((u) => u.sandboxHours), 1);
@@ -20,14 +24,21 @@ export default function UsagePage() {
       <div>
         <h1 className="text-lg font-semibold">用量</h1>
         <p className="text-sm text-muted-foreground">
-          沙箱时长与命令次数。上线后对接 UsageEvent 聚合与账单。
+          沙箱时长与命令次数聚合。账单对接前为示意页。
         </p>
       </div>
+
+      <MockBanner>
+        以下图表与表格为<strong>固定演示数据（Mock）</strong>
+        ，未对接 sandbox_usage / 账单 API。上线后将替换为真实聚合。
+      </MockBanner>
 
       <div className="grid gap-3 sm:grid-cols-3">
         <Card>
           <CardContent className="p-4">
-            <div className="text-xs text-muted-foreground">近 7 日沙箱时</div>
+            <div className="text-xs text-muted-foreground">
+              近 7 日沙箱时（mock）
+            </div>
             <div className="mt-2 flex items-end gap-2">
               <Clock3 className="h-4 w-4 text-sky-600" />
               <span className="text-2xl font-semibold">{totalH.toFixed(1)}</span>
@@ -36,7 +47,9 @@ export default function UsagePage() {
         </Card>
         <Card>
           <CardContent className="p-4">
-            <div className="text-xs text-muted-foreground">近 7 日命令</div>
+            <div className="text-xs text-muted-foreground">
+              近 7 日命令（mock）
+            </div>
             <div className="mt-2 flex items-end gap-2">
               <Code2 className="h-4 w-4 text-violet-600" />
               <span className="text-2xl font-semibold">{totalCmd}</span>
@@ -49,7 +62,9 @@ export default function UsagePage() {
             <div className="mt-2 flex items-end gap-2">
               <ChartColumn className="h-4 w-4 text-brand" />
               <span className="text-2xl font-semibold">示意</span>
-              <span className="pb-0.5 text-xs text-muted-foreground">Team 按量计费占位</span>
+              <span className="pb-0.5 text-xs text-muted-foreground">
+                Team 按量计费占位
+              </span>
             </div>
           </CardContent>
         </Card>
@@ -59,7 +74,7 @@ export default function UsagePage() {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <ChartColumn className="h-4 w-4" />
-            沙箱时（近 7 日）
+            沙箱时（近 7 日 · mock）
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -74,10 +89,13 @@ export default function UsagePage() {
                   className="w-full min-h-1 rounded"
                   style={{
                     height: `${(u.sandboxHours / maxH) * 140}px`,
-                    background: "linear-gradient(180deg, #FF5C33, rgba(255,138,76,0.55))",
+                    background:
+                      "linear-gradient(180deg, #FF5C33, rgba(255,138,76,0.55))",
                   }}
                 />
-                <span className="font-mono text-[11px] text-muted-foreground">{u.day}</span>
+                <span className="font-mono text-[11px] text-muted-foreground">
+                  {u.day}
+                </span>
               </div>
             ))}
           </div>
@@ -98,8 +116,12 @@ export default function UsagePage() {
               {MOCK_USAGE.map((u) => (
                 <TableRow key={u.day}>
                   <TableCell className="font-mono text-xs">{u.day}</TableCell>
-                  <TableCell className="font-mono text-xs">{u.sandboxHours.toFixed(1)}</TableCell>
-                  <TableCell className="font-mono text-xs">{u.commands}</TableCell>
+                  <TableCell className="font-mono text-xs">
+                    {u.sandboxHours.toFixed(1)}
+                  </TableCell>
+                  <TableCell className="font-mono text-xs">
+                    {u.commands}
+                  </TableCell>
                 </TableRow>
               ))}
             </TableBody>

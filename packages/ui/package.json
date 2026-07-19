@@ -1,0 +1,7 @@
+{
+  "name": "@f2b/ui",
+  "version": "0.0.1",
+  "private": true,
+  "description": "设计系统占位；当前组件在 apps/web/src/components/ui",
+  "scripts": { "typecheck": "echo ok" }
+}

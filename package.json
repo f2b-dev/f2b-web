@@ -1,0 +1,14 @@
+{
+  "name": "f2b-web",
+  "private": true,
+  "packageManager": "pnpm@9.15.0",
+  "scripts": {
+    "dev": "pnpm --filter @f2b/web dev",
+    "build": "pnpm --filter @f2b/web build",
+    "typecheck": "pnpm -r run typecheck",
+    "lint": "pnpm --filter @f2b/web lint"
+  },
+  "devDependencies": {
+    "typescript": "^5.8.3"
+  }
+}

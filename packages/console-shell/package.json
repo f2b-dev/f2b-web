@@ -1,0 +1,7 @@
+{
+  "name": "@f2b/console-shell",
+  "version": "0.0.1",
+  "private": true,
+  "description": "控制台壳占位；当前实现位于 apps/web/src/components/console-shell.tsx，后续抽包",
+  "scripts": { "typecheck": "echo ok" }
+}

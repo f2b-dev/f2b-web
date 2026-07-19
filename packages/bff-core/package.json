@@ -1,0 +1,7 @@
+{
+  "name": "@f2b/bff-core",
+  "version": "0.0.1",
+  "private": true,
+  "description": "BFF 工具占位；当前实现位于 apps/web/src/lib/sandbox-upstream.ts",
+  "scripts": { "typecheck": "echo ok" }
+}

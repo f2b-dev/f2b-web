@@ -1,0 +1,7 @@
+{
+  "name": "@f2b/plugin-sandbox",
+  "version": "0.0.1",
+  "private": true,
+  "description": "沙箱产品插件占位；路由与页面暂在 apps/web/src/app/console/sandboxes，后续按插件注册表抽离",
+  "scripts": { "typecheck": "echo ok" }
+}

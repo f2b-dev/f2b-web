@@ -28,6 +28,18 @@ CMD=$(curl -sf -X POST "$BASE/api/sandboxes/$ID/commands" \
 node -e "const j=JSON.parse(process.argv[1]); if(j.result?.exitCode!==0||!String(j.result?.stdout).includes('e2e-ok')) process.exit(3)" "$CMD"
 echo "  cmd ok"
 
+echo "== command stream (SSE) =="
+STREAM=$(curl -sf -N -X POST "$BASE/api/sandboxes/$ID/commands/stream" \
+  -H 'content-type: application/json' \
+  -H 'accept: text/event-stream' \
+  -d '{"cmd":"echo e2e-stream-ok"}')
+echo "$STREAM" | node -e '
+  const t = require("fs").readFileSync(0,"utf8");
+  if (!t.includes("e2e-stream-ok")) process.exit(5);
+  if (!t.includes("\"type\":\"result\"") && !t.includes("\"type\": \"result\"")) process.exit(6);
+  console.log("  stream ok");
+'
+
 echo "== detail page =="
 code=$(curl -sf -o /dev/null -w "%{http_code}" "$BASE/console/sandboxes/$ID")
 [[ "$code" == "200" ]] || { echo "detail $code"; exit 1; }

@@ -26,7 +26,7 @@ import {
   getSandbox,
   killSandbox,
   listFiles,
-  runCommand,
+  runCommandStream,
   type ApiSandbox,
 } from "@/lib/sandbox-api";
 import { SandboxStatusTag } from "@/lib/status";
@@ -37,7 +37,9 @@ export default function SandboxDetailPage() {
   const [sandbox, setSandbox] = useState<ApiSandbox | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [cmd, setCmd] = useState("echo hello from lingjing");
-  const [log, setLog] = useState("$ # connected via BFF → f2b-sandbox\n");
+  const [log, setLog] = useState(
+    "$ # connected via BFF → f2b-sandbox (SSE stream)\n",
+  );
   const [files, setFiles] = useState<
     { path: string; name: string; type: string; size?: number }[]
   >([]);
@@ -70,13 +72,26 @@ export default function SandboxDetailPage() {
     if (!line || !sandbox) return;
     setBusy(true);
     setLog((prev) => `${prev}$ ${line}\n`);
+    let gotChunk = false;
     try {
-      const result = await runCommand(sandbox.id, line);
-      const out =
-        (result.stdout || "") +
-        (result.stderr || "") +
-        (result.exitCode !== 0 ? `\nexit ${result.exitCode}` : "");
-      setLog((prev) => `${prev}${out || "(no output)"}\n`);
+      const result = await runCommandStream(sandbox.id, line, (ev) => {
+        if (ev.type === "stdout" && ev.text) {
+          gotChunk = true;
+          setLog((prev) => `${prev}${ev.text}`);
+        }
+        if (ev.type === "stderr" && ev.text) {
+          gotChunk = true;
+          setLog((prev) => `${prev}${ev.text}`);
+        }
+      });
+      if (!gotChunk) {
+        const out = (result.stdout || "") + (result.stderr || "");
+        if (out) setLog((prev) => `${prev}${out}`);
+      }
+      if (result.exitCode !== 0) {
+        setLog((prev) => `${prev}\nexit ${result.exitCode}`);
+      }
+      setLog((prev) => (prev.endsWith("\n") ? prev : `${prev}\n`));
       setCmd("");
     } catch (e) {
       setLog(

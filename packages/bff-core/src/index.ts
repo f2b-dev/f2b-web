@@ -1,2 +1,6 @@
-export { sandboxBaseUrl, proxyToSandbox } from "./sandbox-upstream";
+export {
+  sandboxBaseUrl,
+  proxyToSandbox,
+  proxySseToSandbox,
+} from "./sandbox-upstream";
 export { jsonError } from "./http";

@@ -12,9 +12,12 @@
 
 ## 如何新增产品插件
 
-1. 在 `plugins/<name>` 导出 `ConsolePlugin`（`id` / `nav` / 可选 `titleFor`）。
+组织设计 **§2 已定稿**（与 `console-shell` 实现一致）。步骤：
+
+1. 在 `plugins/<name>` 导出 `ConsolePlugin`（`id` / `nav` / 可选 `titleFor` / `productLabel`）。
 2. 在 `apps/web/src/plugins/registry.ts` 的 `consolePlugins` 数组追加。
 3. 页面与 BFF 仍可先放在 `apps/web`，稳定后再迁入插件包。
+4. 浏览器侧只打同源 `/api/*`，禁止管理密钥进 client。
 
 ```ts
 import type { ConsolePlugin } from "@f2b/console-shell";

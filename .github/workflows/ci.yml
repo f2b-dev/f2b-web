@@ -1,0 +1,29 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  typecheck-and-guards:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - run: corepack enable && corepack prepare pnpm@9.15.0 --activate
+      - run: pnpm install --frozen-lockfile
+      - name: Install ripgrep (guards)
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq ripgrep
+      - run: pnpm typecheck
+
+      - name: 硬约束回归（无 antd / 无管理密钥进 client）
+        run: bash scripts/ci-guards.sh

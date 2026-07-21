@@ -7,6 +7,7 @@ import {
   ArrowLeft,
   ArrowUp,
   Clock3,
+  ExternalLink,
   File,
   FolderOpen,
   Globe,
@@ -14,6 +15,7 @@ import {
   Info,
   Pause,
   Play,
+  Plus,
   RefreshCw,
   Save,
   Terminal,
@@ -39,6 +41,12 @@ import {
   type ApiSandbox,
   type FileEntry,
 } from "@/lib/sandbox-api";
+import {
+  closeTunnel,
+  createTunnel,
+  listTunnels,
+  type ApiTunnel,
+} from "@/lib/tunnels-api";
 import { SandboxStatusTag } from "@/lib/status";
 
 const DEFAULT_DIR = "/home/user";
@@ -69,6 +77,24 @@ export default function SandboxDetailPage() {
   const [newName, setNewName] = useState("");
   const [busy, setBusy] = useState(false);
   const [filesBusy, setFilesBusy] = useState(false);
+  const [tunnels, setTunnels] = useState<ApiTunnel[]>([]);
+  const [tunnelsError, setTunnelsError] = useState<string | null>(null);
+  const [tunnelsBusy, setTunnelsBusy] = useState(false);
+  const [tunnelPort, setTunnelPort] = useState("3000");
+  const [tunnelTarget, setTunnelTarget] = useState("");
+
+  const loadTunnels = useCallback(async (sandboxId: string) => {
+    setTunnelsBusy(true);
+    setTunnelsError(null);
+    try {
+      setTunnels(await listTunnels(sandboxId));
+    } catch (e) {
+      setTunnels([]);
+      setTunnelsError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setTunnelsBusy(false);
+    }
+  }, []);
 
   const loadFiles = useCallback(
     async (dir: string) => {
@@ -94,6 +120,7 @@ export default function SandboxDetailPage() {
       const sb = await getSandbox(params.id);
       setSandbox(sb);
       setLoadError(null);
+      void loadTunnels(sb.id);
       if (sb.status === "running") {
         await loadFiles(cwd);
       } else {
@@ -103,7 +130,7 @@ export default function SandboxDetailPage() {
       setSandbox(null);
       setLoadError(e instanceof Error ? e.message : String(e));
     }
-  }, [params.id, loadFiles, cwd]);
+  }, [params.id, loadFiles, loadTunnels, cwd]);
 
   useEffect(() => {
     void load();
@@ -245,6 +272,48 @@ export default function SandboxDetailPage() {
     }
   }
 
+  async function onCreateTunnel() {
+    if (!sandbox) return;
+    const port = Number(tunnelPort);
+    if (!Number.isInteger(port) || port < 1 || port > 65535) {
+      setTunnelsError("端口需为 1–65535 的整数");
+      return;
+    }
+    setTunnelsBusy(true);
+    setTunnelsError(null);
+    try {
+      const target = tunnelTarget.trim();
+      await createTunnel({
+        sandboxId: sandbox.id,
+        port,
+        name: `port-${port}`,
+        projectId: sandbox.projectId,
+        ...(target ? { targetUrl: target } : {}),
+      });
+      setTunnelTarget("");
+      await loadTunnels(sandbox.id);
+    } catch (e) {
+      setTunnelsError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setTunnelsBusy(false);
+    }
+  }
+
+  async function onCloseTunnel(id: string) {
+    if (!sandbox) return;
+    if (!confirm("关闭此预览隧道？")) return;
+    setTunnelsBusy(true);
+    setTunnelsError(null);
+    try {
+      await closeTunnel(id);
+      await loadTunnels(sandbox.id);
+    } catch (e) {
+      setTunnelsError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setTunnelsBusy(false);
+    }
+  }
+
   if (loadError && !sandbox) {
     return (
       <div className="flex flex-col items-center gap-3 py-20 text-sm text-muted-foreground">
@@ -351,6 +420,10 @@ export default function SandboxDetailPage() {
               <TabsTrigger value="files">
                 <FolderOpen className="h-3.5 w-3.5" />
                 文件
+              </TabsTrigger>
+              <TabsTrigger value="tunnels">
+                <Globe className="h-3.5 w-3.5" />
+                预览
               </TabsTrigger>
               <TabsTrigger value="meta">
                 <Info className="h-3.5 w-3.5" />
@@ -513,6 +586,92 @@ export default function SandboxDetailPage() {
                   </div>
                 </>
               )}
+            </TabsContent>
+
+            <TabsContent value="tunnels" className="space-y-3 pt-3">
+              <p className="text-sm text-muted-foreground">
+                将沙箱端口登记为预览 URL（经 f2b-tunnel 反代）。开发态可填
+                targetUrl；默认{" "}
+                <code className="text-xs">http://127.0.0.1:&lt;port&gt;</code>
+                。
+              </p>
+              {tunnelsError ? (
+                <Alert variant="destructive">
+                  <AlertDescription>{tunnelsError}</AlertDescription>
+                </Alert>
+              ) : null}
+              <div className="flex flex-wrap gap-2">
+                <Input
+                  value={tunnelPort}
+                  onChange={(e) => setTunnelPort(e.target.value)}
+                  placeholder="端口，如 3000"
+                  className="w-28 font-mono"
+                  disabled={tunnelsBusy}
+                />
+                <Input
+                  value={tunnelTarget}
+                  onChange={(e) => setTunnelTarget(e.target.value)}
+                  placeholder="可选 targetUrl"
+                  className="min-w-[12rem] flex-1 font-mono text-xs"
+                  disabled={tunnelsBusy}
+                />
+                <Button
+                  variant="secondary"
+                  disabled={tunnelsBusy || sandbox.status === "killed"}
+                  onClick={() => void onCreateTunnel()}
+                >
+                  <Plus className="h-4 w-4" />
+                  创建隧道
+                </Button>
+                <Button
+                  variant="secondary"
+                  disabled={tunnelsBusy}
+                  onClick={() => void loadTunnels(sandbox.id)}
+                >
+                  <RefreshCw className="h-4 w-4" />
+                  刷新
+                </Button>
+              </div>
+              <ul className="divide-y rounded-md border">
+                {tunnels.length === 0 ? (
+                  <li className="px-3 py-6 text-center text-sm text-muted-foreground">
+                    {tunnelsBusy ? "加载中…" : "暂无隧道"}
+                  </li>
+                ) : (
+                  tunnels.map((t) => (
+                    <li
+                      key={t.id}
+                      className="flex flex-wrap items-center gap-2 px-3 py-2 text-sm"
+                    >
+                      <span className="font-mono text-xs text-muted-foreground">
+                        :{t.port}
+                      </span>
+                      <span className="rounded bg-muted px-1.5 py-0.5 text-xs">
+                        {t.status}
+                      </span>
+                      <a
+                        href={t.publicUrl}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="inline-flex min-w-0 flex-1 items-center gap-1 truncate font-mono text-xs text-brand hover:underline"
+                      >
+                        <ExternalLink className="h-3 w-3 shrink-0" />
+                        {t.publicUrl}
+                      </a>
+                      {t.status === "active" ? (
+                        <Button
+                          size="sm"
+                          variant="secondary"
+                          disabled={tunnelsBusy}
+                          onClick={() => void onCloseTunnel(t.id)}
+                        >
+                          关闭
+                        </Button>
+                      ) : null}
+                    </li>
+                  ))
+                )}
+              </ul>
             </TabsContent>
 
             <TabsContent value="meta" className="pt-3">

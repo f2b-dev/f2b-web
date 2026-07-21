@@ -1,8 +1,8 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { Suspense, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { ArrowLeft, LayoutTemplate, Play } from "lucide-react";
 import { Badge } from "@f2b/ui";
 import { Button } from "@f2b/ui";
@@ -18,25 +18,69 @@ import {
   SelectValue,
 } from "@f2b/ui";
 import { Alert, AlertDescription } from "@f2b/ui";
-import { PRODUCT_TEMPLATES } from "@/lib/catalog";
 import { createSandbox } from "@/lib/sandbox-api";
+import {
+  fetchTemplates,
+  type TemplateRef,
+} from "@/lib/templates-api";
 import { cn } from "@f2b/ui";
 
 export default function NewSandboxPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="py-20 text-center text-sm text-muted-foreground">
+          加载中…
+        </div>
+      }
+    >
+      <NewSandboxForm />
+    </Suspense>
+  );
+}
+
+function NewSandboxForm() {
   const router = useRouter();
+  const search = useSearchParams();
+  const initialTemplate = search.get("template") || "code-interpreter";
   const [name, setName] = useState(
     "sandbox-" + Math.random().toString(36).slice(2, 7),
   );
-  const [template, setTemplate] = useState("code-interpreter");
+  const [templates, setTemplates] = useState<TemplateRef[]>([]);
+  const [templatesError, setTemplatesError] = useState<string | null>(null);
+  const [template, setTemplate] = useState(initialTemplate);
   const [timeoutMin, setTimeoutMin] = useState(30);
   const [internet, setInternet] = useState(false);
   const [region, setRegion] = useState("cn-hangzhou");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      try {
+        const list = await fetchTemplates();
+        if (cancelled) return;
+        setTemplates(list);
+        setTemplatesError(null);
+        if (list.length && !list.some((t) => t.id === template)) {
+          setTemplate(list[0]!.id);
+        }
+      } catch (e) {
+        if (cancelled) return;
+        setTemplatesError(e instanceof Error ? e.message : String(e));
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+    // 仅挂载时拉一次
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const selected = useMemo(
-    () => PRODUCT_TEMPLATES.find((t) => t.slug === template),
-    [template],
+    () => templates.find((t) => t.id === template),
+    [templates, template],
   );
 
   async function onCreate(e: React.FormEvent) {
@@ -80,6 +124,13 @@ export default function NewSandboxPage() {
           <AlertDescription>{error}</AlertDescription>
         </Alert>
       ) : null}
+      {templatesError ? (
+        <Alert variant="destructive">
+          <AlertDescription>
+            无法加载模板目录：{templatesError}
+          </AlertDescription>
+        </Alert>
+      ) : null}
 
       <div className="grid gap-4 lg:grid-cols-3">
         <Card className="lg:col-span-2">
@@ -101,38 +152,46 @@ export default function NewSandboxPage() {
               <div className="space-y-2">
                 <Label>模板</Label>
                 <div className="space-y-2">
-                  {PRODUCT_TEMPLATES.map((t) => {
-                    const active = template === t.slug;
-                    return (
-                      <button
-                        key={t.id}
-                        type="button"
-                        onClick={() => setTemplate(t.slug)}
-                        className={cn(
-                          "flex w-full items-start justify-between rounded-md border p-3 text-left transition",
-                          active
-                            ? "border-brand bg-brand/[0.04]"
-                            : "border-border hover:border-brand/40",
-                        )}
-                      >
-                        <div className="flex gap-2">
-                          <LayoutTemplate className="mt-0.5 h-4 w-4 text-brand" />
-                          <div>
-                            <div className="text-sm font-medium">{t.name}</div>
-                            <div className="text-xs text-muted-foreground">
-                              {t.description}
-                            </div>
-                            <div className="mt-1 font-mono text-[11px] text-muted-foreground">
-                              {t.image}
+                  {templates.length === 0 ? (
+                    <p className="text-sm text-muted-foreground">
+                      {templatesError ? "模板加载失败" : "加载模板…"}
+                    </p>
+                  ) : (
+                    templates.map((t) => {
+                      const active = template === t.id;
+                      return (
+                        <button
+                          key={t.id}
+                          type="button"
+                          onClick={() => setTemplate(t.id)}
+                          className={cn(
+                            "flex w-full items-start justify-between rounded-md border p-3 text-left transition",
+                            active
+                              ? "border-brand bg-brand/[0.04]"
+                              : "border-border hover:border-brand/40",
+                          )}
+                        >
+                          <div className="flex gap-2">
+                            <LayoutTemplate className="mt-0.5 h-4 w-4 text-brand" />
+                            <div>
+                              <div className="text-sm font-medium">{t.name}</div>
+                              <div className="text-xs text-muted-foreground">
+                                {t.description}
+                              </div>
+                              {t.image ? (
+                                <div className="mt-1 font-mono text-[11px] text-muted-foreground">
+                                  {t.image}
+                                </div>
+                              ) : null}
                             </div>
                           </div>
-                        </div>
-                        {t.popular ? (
-                          <Badge variant="secondary">常用</Badge>
-                        ) : null}
-                      </button>
-                    );
-                  })}
+                          {t.popular ? (
+                            <Badge variant="secondary">常用</Badge>
+                          ) : null}
+                        </button>
+                      );
+                    })
+                  )}
                 </div>
               </div>
 
@@ -176,7 +235,7 @@ export default function NewSandboxPage() {
 
               <Button
                 type="submit"
-                disabled={submitting}
+                disabled={submitting || templates.length === 0}
                 className="w-full sm:w-auto"
               >
                 <Play className="h-4 w-4" />

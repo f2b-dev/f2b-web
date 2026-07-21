@@ -20,6 +20,7 @@ import {
 import { proxyToSandbox } from "@f2b/bff-core";
 import { SandboxStatusTag } from "@/lib/status";
 import { formatDuration, type ApiSandbox } from "@/lib/sandbox-api";
+import type { UsageSummary } from "@/lib/usage-api";
 
 export const dynamic = "force-dynamic";
 
@@ -48,10 +49,23 @@ async function loadSandboxes(): Promise<{
   }
 }
 
+async function loadUsage(): Promise<UsageSummary | null> {
+  try {
+    const res = await proxyToSandbox("/v1/usage?days=7", { method: "GET" });
+    const data = (await res.json()) as { usage?: UsageSummary };
+    if (!res.ok) return null;
+    return data.usage ?? null;
+  } catch {
+    return null;
+  }
+}
+
 export default async function ConsoleDashboardPage() {
-  const { sandboxes, error } = await loadSandboxes();
+  const [{ sandboxes, error }, usage] = await Promise.all([
+    loadSandboxes(),
+    loadUsage(),
+  ]);
   const running = sandboxes.filter((s) => s.status === "running").length;
-  const totalSec = sandboxes.reduce((a, b) => a + (b.durationSec || 0), 0);
   const recent = [...sandboxes]
     .sort(
       (a, b) =>
@@ -75,16 +89,18 @@ export default async function ConsoleDashboardPage() {
       iconClass: "text-sky-600",
     },
     {
-      title: "累计时长（记录）",
-      value: formatDuration(totalSec),
+      title: "近 7 日沙箱时",
+      value: usage ? usage.totalSandboxHours.toFixed(3) : "—",
+      suffix: usage ? "h" : undefined,
+      href: "/console/usage",
       icon: Clock3,
       iconClass: "text-violet-600",
     },
     {
-      title: "API 密钥",
-      value: "管理",
-      href: "/console/keys",
-      icon: KeyRound,
+      title: "近 7 日命令",
+      value: usage ? String(usage.totalCommands) : "—",
+      href: "/console/usage",
+      icon: Code2,
       iconClass: "text-brand",
     },
   ];
@@ -237,12 +253,18 @@ export default async function ConsoleDashboardPage() {
                 </div>
               </div>
             </Link>
-            <Alert variant="info">
-              <ChartColumn className="h-4 w-4" />
-              <AlertDescription>
-                用量页仍为演示聚合；密钥与沙箱列表已接 f2b-sandbox。
-              </AlertDescription>
-            </Alert>
+            <Link
+              href="/console/usage"
+              className="flex items-start gap-3 rounded-md border border-border p-3 transition hover:border-brand/40 hover:bg-brand/[0.03]"
+            >
+              <ChartColumn className="mt-0.5 h-5 w-5 text-brand" />
+              <div>
+                <div className="text-sm font-medium">用量</div>
+                <div className="text-xs text-muted-foreground">
+                  近 7 日沙箱时与命令次数（真实聚合）
+                </div>
+              </div>
+            </Link>
           </CardContent>
         </Card>
       </div>

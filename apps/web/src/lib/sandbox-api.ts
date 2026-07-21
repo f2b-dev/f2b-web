@@ -186,17 +186,58 @@ export async function runCommandStream(
   return result;
 }
 
-export async function listFiles(id: string, path = "/home/user") {
+export type FileEntry = {
+  path: string;
+  name: string;
+  type: string;
+  size?: number;
+};
+
+export async function listFiles(
+  id: string,
+  path = "/home/user",
+): Promise<FileEntry[]> {
   const q = new URLSearchParams({ list: "1", path });
-  const data = await parse<{
-    entries: { path: string; name: string; type: string; size?: number }[];
-  }>(
+  const data = await parse<{ entries: FileEntry[] }>(
     await fetch(
       `/api/sandboxes/${encodeURIComponent(id)}/files?${q.toString()}`,
       { cache: "no-store" },
     ),
   );
   return data.entries ?? [];
+}
+
+export async function readFile(
+  id: string,
+  path: string,
+): Promise<{ content: string; encoding: string }> {
+  const q = new URLSearchParams({ path, encoding: "utf8" });
+  const data = await parse<{
+    file: { content: string; encoding: string; path?: string };
+  }>(
+    await fetch(
+      `/api/sandboxes/${encodeURIComponent(id)}/files?${q.toString()}`,
+      { cache: "no-store" },
+    ),
+  );
+  return {
+    content: data.file?.content ?? "",
+    encoding: data.file?.encoding ?? "utf8",
+  };
+}
+
+export async function writeFile(
+  id: string,
+  path: string,
+  content: string,
+): Promise<void> {
+  await parse(
+    await fetch(`/api/sandboxes/${encodeURIComponent(id)}/files`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ path, content, encoding: "utf8" }),
+    }),
+  );
 }
 
 export function formatDuration(sec: number) {

@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import {
   ArrowLeft,
+  ArrowUp,
   Clock3,
   File,
   FolderOpen,
@@ -12,6 +13,8 @@ import {
   HardDrive,
   Info,
   Pause,
+  RefreshCw,
+  Save,
   Terminal,
   Trash2,
   Cpu,
@@ -19,6 +22,7 @@ import {
 import { Button } from "@f2b/ui";
 import { Card, CardContent } from "@f2b/ui";
 import { Input } from "@f2b/ui";
+import { Textarea } from "@f2b/ui";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@f2b/ui";
 import { Alert, AlertDescription } from "@f2b/ui";
 import {
@@ -26,10 +30,23 @@ import {
   getSandbox,
   killSandbox,
   listFiles,
+  readFile,
   runCommandStream,
+  writeFile,
   type ApiSandbox,
+  type FileEntry,
 } from "@/lib/sandbox-api";
 import { SandboxStatusTag } from "@/lib/status";
+
+const DEFAULT_DIR = "/home/user";
+
+function parentPath(path: string): string {
+  if (!path || path === "/") return "/";
+  const trimmed = path.replace(/\/+$/, "") || "/";
+  if (trimmed === "/") return "/";
+  const idx = trimmed.lastIndexOf("/");
+  return idx <= 0 ? "/" : trimmed.slice(0, idx);
+}
 
 export default function SandboxDetailPage() {
   const params = useParams<{ id: string }>();
@@ -40,10 +57,34 @@ export default function SandboxDetailPage() {
   const [log, setLog] = useState(
     "$ # connected via BFF → f2b-sandbox (SSE stream)\n",
   );
-  const [files, setFiles] = useState<
-    { path: string; name: string; type: string; size?: number }[]
-  >([]);
+  const [cwd, setCwd] = useState(DEFAULT_DIR);
+  const [files, setFiles] = useState<FileEntry[]>([]);
+  const [filesError, setFilesError] = useState<string | null>(null);
+  const [selectedPath, setSelectedPath] = useState<string | null>(null);
+  const [editor, setEditor] = useState("");
+  const [editorDirty, setEditorDirty] = useState(false);
+  const [newName, setNewName] = useState("");
   const [busy, setBusy] = useState(false);
+  const [filesBusy, setFilesBusy] = useState(false);
+
+  const loadFiles = useCallback(
+    async (dir: string) => {
+      if (!params.id) return;
+      setFilesBusy(true);
+      setFilesError(null);
+      try {
+        const entries = await listFiles(params.id, dir);
+        setFiles(entries);
+        setCwd(dir);
+      } catch (e) {
+        setFiles([]);
+        setFilesError(e instanceof Error ? e.message : String(e));
+      } finally {
+        setFilesBusy(false);
+      }
+    },
+    [params.id],
+  );
 
   const load = useCallback(async () => {
     try {
@@ -51,21 +92,82 @@ export default function SandboxDetailPage() {
       setSandbox(sb);
       setLoadError(null);
       if (sb.status === "running" || sb.status === "paused") {
-        try {
-          setFiles(await listFiles(sb.id));
-        } catch {
-          setFiles([]);
-        }
+        await loadFiles(cwd);
+      } else {
+        setFiles([]);
       }
     } catch (e) {
       setSandbox(null);
       setLoadError(e instanceof Error ? e.message : String(e));
     }
-  }, [params.id]);
+  }, [params.id, loadFiles, cwd]);
 
   useEffect(() => {
     void load();
-  }, [load]);
+    // 仅 id 变化时全量加载；目录切换走 loadFiles
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [params.id]);
+
+  async function openEntry(entry: FileEntry) {
+    if (entry.type === "dir") {
+      setSelectedPath(null);
+      setEditor("");
+      setEditorDirty(false);
+      await loadFiles(entry.path);
+      return;
+    }
+    setFilesBusy(true);
+    setFilesError(null);
+    try {
+      const file = await readFile(params.id, entry.path);
+      setSelectedPath(entry.path);
+      setEditor(file.content);
+      setEditorDirty(false);
+    } catch (e) {
+      setFilesError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setFilesBusy(false);
+    }
+  }
+
+  async function onSaveFile() {
+    if (!selectedPath || !sandbox) return;
+    setFilesBusy(true);
+    setFilesError(null);
+    try {
+      await writeFile(sandbox.id, selectedPath, editor);
+      setEditorDirty(false);
+      await loadFiles(cwd);
+    } catch (e) {
+      setFilesError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setFilesBusy(false);
+    }
+  }
+
+  async function onCreateFile() {
+    const name = newName.trim().replace(/^\/+/, "");
+    if (!name || !sandbox) return;
+    if (name.includes("..")) {
+      setFilesError("文件名不能包含 ..");
+      return;
+    }
+    const path = cwd === "/" ? `/${name}` : `${cwd}/${name}`;
+    setFilesBusy(true);
+    setFilesError(null);
+    try {
+      await writeFile(sandbox.id, path, "");
+      setNewName("");
+      await loadFiles(cwd);
+      setSelectedPath(path);
+      setEditor("");
+      setEditorDirty(false);
+    } catch (e) {
+      setFilesError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setFilesBusy(false);
+    }
+  }
 
   async function runCmd() {
     const line = cmd.trim();
@@ -140,6 +242,9 @@ export default function SandboxDetailPage() {
       </div>
     );
   }
+
+  const filesInteractive =
+    sandbox.status === "running" || sandbox.status === "paused";
 
   return (
     <div className="space-y-4">
@@ -239,33 +344,135 @@ export default function SandboxDetailPage() {
               </div>
             </TabsContent>
 
-            <TabsContent value="files" className="pt-3">
-              <ul className="divide-y rounded-md border">
-                {files.length === 0 ? (
-                  <li className="px-3 py-6 text-center text-sm text-muted-foreground">
-                    无文件或沙箱未运行
-                  </li>
-                ) : (
-                  files.map((f) => (
-                    <li
-                      key={f.path}
-                      className="flex items-center gap-2 px-3 py-2 text-sm"
+            <TabsContent value="files" className="space-y-3 pt-3">
+              {!filesInteractive ? (
+                <p className="py-6 text-center text-sm text-muted-foreground">
+                  沙箱未运行，无法浏览文件。
+                </p>
+              ) : (
+                <>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Button
+                      size="sm"
+                      variant="secondary"
+                      disabled={filesBusy || cwd === "/"}
+                      onClick={() => void loadFiles(parentPath(cwd))}
                     >
-                      {f.type === "dir" ? (
-                        <FolderOpen className="h-4 w-4 text-amber-600" />
-                      ) : (
-                        <File className="h-4 w-4 text-sky-600" />
-                      )}
-                      <span className="font-mono text-xs">{f.path}</span>
-                      {f.size != null ? (
-                        <span className="ml-auto text-xs text-muted-foreground">
-                          {f.size} B
-                        </span>
-                      ) : null}
-                    </li>
-                  ))
-                )}
-              </ul>
+                      <ArrowUp className="h-3.5 w-3.5" />
+                      上级
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="secondary"
+                      disabled={filesBusy}
+                      onClick={() => void loadFiles(cwd)}
+                    >
+                      <RefreshCw className="h-3.5 w-3.5" />
+                      刷新
+                    </Button>
+                    <code className="min-w-0 flex-1 truncate rounded-md border bg-muted/40 px-2 py-1.5 font-mono text-xs">
+                      {cwd}
+                    </code>
+                  </div>
+
+                  {filesError ? (
+                    <Alert variant="destructive">
+                      <AlertDescription>{filesError}</AlertDescription>
+                    </Alert>
+                  ) : null}
+
+                  <div className="grid gap-3 lg:grid-cols-2">
+                    <div className="space-y-2">
+                      <ul className="max-h-72 divide-y overflow-auto rounded-md border">
+                        {files.length === 0 ? (
+                          <li className="px-3 py-6 text-center text-sm text-muted-foreground">
+                            {filesBusy ? "加载中…" : "目录为空"}
+                          </li>
+                        ) : (
+                          files.map((f) => (
+                            <li key={f.path}>
+                              <button
+                                type="button"
+                                className={`flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-muted/50 ${
+                                  selectedPath === f.path ? "bg-brand/5" : ""
+                                }`}
+                                onClick={() => void openEntry(f)}
+                                disabled={filesBusy}
+                              >
+                                {f.type === "dir" ? (
+                                  <FolderOpen className="h-4 w-4 shrink-0 text-amber-600" />
+                                ) : (
+                                  <File className="h-4 w-4 shrink-0 text-sky-600" />
+                                )}
+                                <span className="truncate font-mono text-xs">
+                                  {f.name}
+                                </span>
+                                {f.size != null ? (
+                                  <span className="ml-auto shrink-0 text-xs text-muted-foreground">
+                                    {f.size} B
+                                  </span>
+                                ) : null}
+                              </button>
+                            </li>
+                          ))
+                        )}
+                      </ul>
+
+                      <div className="flex gap-2">
+                        <Input
+                          value={newName}
+                          onChange={(e) => setNewName(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") void onCreateFile();
+                          }}
+                          placeholder="新文件名，如 notes.txt"
+                          disabled={filesBusy}
+                          className="font-mono text-xs"
+                        />
+                        <Button
+                          variant="secondary"
+                          disabled={filesBusy || !newName.trim()}
+                          onClick={() => void onCreateFile()}
+                        >
+                          新建
+                        </Button>
+                      </div>
+                    </div>
+
+                    <div className="flex min-h-72 flex-col gap-2">
+                      <div className="flex items-center gap-2">
+                        <code className="min-w-0 flex-1 truncate font-mono text-xs text-muted-foreground">
+                          {selectedPath ?? "选择文件以预览 / 编辑"}
+                        </code>
+                        <Button
+                          size="sm"
+                          disabled={
+                            filesBusy || !selectedPath || !editorDirty
+                          }
+                          onClick={() => void onSaveFile()}
+                        >
+                          <Save className="h-3.5 w-3.5" />
+                          保存
+                        </Button>
+                      </div>
+                      <Textarea
+                        value={editor}
+                        onChange={(e) => {
+                          setEditor(e.target.value);
+                          setEditorDirty(true);
+                        }}
+                        disabled={!selectedPath || filesBusy}
+                        placeholder={
+                          selectedPath
+                            ? "文件内容"
+                            : "点击左侧文件打开编辑器"
+                        }
+                        className="min-h-60 flex-1 font-mono text-xs"
+                      />
+                    </div>
+                  </div>
+                </>
+              )}
             </TabsContent>
 
             <TabsContent value="meta" className="pt-3">

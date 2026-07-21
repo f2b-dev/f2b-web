@@ -76,7 +76,7 @@ export default function SandboxesPage() {
         <Alert variant="destructive">
           <AlertDescription>
             无法加载沙箱列表：{error}。请确认 f2b-sandbox 已启动（默认
-            :8787），且 F2B_SANDBOX_URL 正确。
+            :13287），且 F2B_SANDBOX_URL 正确。
           </AlertDescription>
         </Alert>
       ) : null}

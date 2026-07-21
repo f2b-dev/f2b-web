@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # 浏览器同源路径 E2E：列表 → 创建 → 命令 → 销毁（经 BFF /api/sandboxes）
 set -euo pipefail
-BASE="${F2B_WEB_URL:-http://127.0.0.1:3000}"
+BASE="${F2B_WEB_URL:-http://127.0.0.1:13200}"
 NAME="e2e-$(date +%s | tail -c 6)"
 
 echo "== pages =="

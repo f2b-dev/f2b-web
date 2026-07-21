@@ -31,7 +31,7 @@ pnpm install
 pnpm dev
 ```
 
-http://localhost:3000 — 沙箱列表/创建/终端走 BFF → sandbox。
+http://localhost:13200 — 沙箱列表/创建/终端走 BFF → sandbox。
 
 ## 新增产品插件
 
@@ -51,7 +51,7 @@ Apache-2.0
 
 ```bash
 pnpm e2e:bff
-# 或 F2B_WEB_URL=http://127.0.0.1:3000 ./scripts/e2e-bff.sh
+# 或 F2B_WEB_URL=http://127.0.0.1:13200 ./scripts/e2e-bff.sh
 ```
 
 覆盖：控制台列表/创建页 200 → BFF 创建 → 命令 `echo e2e-ok` → 详情页 200 → 销毁。

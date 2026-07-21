@@ -3,7 +3,7 @@
  * 浏览器永不直连数据面管理地址与密钥。
  */
 
-const DEFAULT_URL = "http://127.0.0.1:8787";
+const DEFAULT_URL = "http://127.0.0.1:13287";
 
 export function sandboxBaseUrl(): string {
   return (

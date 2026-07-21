@@ -13,6 +13,7 @@ import {
   HardDrive,
   Info,
   Pause,
+  Play,
   RefreshCw,
   Save,
   Terminal,
@@ -30,7 +31,9 @@ import {
   getSandbox,
   killSandbox,
   listFiles,
+  pauseSandbox,
   readFile,
+  resumeSandbox,
   runCommandStream,
   writeFile,
   type ApiSandbox,
@@ -91,7 +94,7 @@ export default function SandboxDetailPage() {
       const sb = await getSandbox(params.id);
       setSandbox(sb);
       setLoadError(null);
-      if (sb.status === "running" || sb.status === "paused") {
+      if (sb.status === "running") {
         await loadFiles(cwd);
       } else {
         setFiles([]);
@@ -221,6 +224,27 @@ export default function SandboxDetailPage() {
     }
   }
 
+  async function onPauseResume() {
+    if (!sandbox) return;
+    setBusy(true);
+    try {
+      if (sandbox.status === "running") {
+        const sb = await pauseSandbox(sandbox.id);
+        setSandbox(sb);
+        setLog((prev) => `${prev}$ # sandbox paused\n`);
+      } else if (sandbox.status === "paused") {
+        const sb = await resumeSandbox(sandbox.id);
+        setSandbox(sb);
+        setLog((prev) => `${prev}$ # sandbox resumed\n`);
+        await loadFiles(cwd);
+      }
+    } catch (e) {
+      alert(e instanceof Error ? e.message : String(e));
+    } finally {
+      setBusy(false);
+    }
+  }
+
   if (loadError && !sandbox) {
     return (
       <div className="flex flex-col items-center gap-3 py-20 text-sm text-muted-foreground">
@@ -243,8 +267,7 @@ export default function SandboxDetailPage() {
     );
   }
 
-  const filesInteractive =
-    sandbox.status === "running" || sandbox.status === "paused";
+  const filesInteractive = sandbox.status === "running";
 
   return (
     <div className="space-y-4">
@@ -260,10 +283,25 @@ export default function SandboxDetailPage() {
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
-          <Button variant="secondary" disabled title="Pause 后续版本">
-            <Pause className="h-4 w-4" />
-            暂停
-          </Button>
+          {sandbox.status === "paused" ? (
+            <Button
+              variant="secondary"
+              onClick={() => void onPauseResume()}
+              disabled={busy}
+            >
+              <Play className="h-4 w-4" />
+              恢复
+            </Button>
+          ) : (
+            <Button
+              variant="secondary"
+              onClick={() => void onPauseResume()}
+              disabled={busy || sandbox.status !== "running"}
+            >
+              <Pause className="h-4 w-4" />
+              暂停
+            </Button>
+          )}
           <Button
             variant="destructive"
             onClick={() => void onKill()}
@@ -347,7 +385,9 @@ export default function SandboxDetailPage() {
             <TabsContent value="files" className="space-y-3 pt-3">
               {!filesInteractive ? (
                 <p className="py-6 text-center text-sm text-muted-foreground">
-                  沙箱未运行，无法浏览文件。
+                  {sandbox.status === "paused"
+                    ? "沙箱已暂停，恢复后再浏览文件。"
+                    : "沙箱未运行，无法浏览文件。"}
                 </p>
               ) : (
                 <>

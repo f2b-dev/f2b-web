@@ -74,6 +74,24 @@ export async function killSandbox(id: string): Promise<ApiSandbox> {
   return data.sandbox;
 }
 
+export async function pauseSandbox(id: string): Promise<ApiSandbox> {
+  const data = await parse<{ sandbox: ApiSandbox }>(
+    await fetch(`/api/sandboxes/${encodeURIComponent(id)}/pause`, {
+      method: "POST",
+    }),
+  );
+  return data.sandbox;
+}
+
+export async function resumeSandbox(id: string): Promise<ApiSandbox> {
+  const data = await parse<{ sandbox: ApiSandbox }>(
+    await fetch(`/api/sandboxes/${encodeURIComponent(id)}/resume`, {
+      method: "POST",
+    }),
+  );
+  return data.sandbox;
+}
+
 export type CommandResult = {
   exitCode: number;
   stdout: string;

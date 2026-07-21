@@ -1,0 +1,9 @@
+import { proxyToSandbox } from "@f2b/bff-core";
+
+export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
+
+export async function GET(req: Request) {
+  const q = new URL(req.url).search;
+  return proxyToSandbox(`/v1/usage${q}`, { method: "GET" });
+}

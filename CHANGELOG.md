@@ -6,6 +6,7 @@
 
 ### Added
 
+- GHA `e2e-bff` job：起 fake sandbox + tunnel + web，跑全路径 `e2e:bff`
 - `e2e:bff` 覆盖模板/用量/密钥/隧道全路径（create→list→revoke/close）
 - 插件 `sandboxBffRoutes` + `pnpm check:bff-map`；README 补「新增 BFF 路由」步骤
 - `e2e:bff` 覆盖 cwd / command timeoutMs / 文件 mkdir+rename / PATCH timeoutMs

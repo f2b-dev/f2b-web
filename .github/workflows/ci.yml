@@ -29,3 +29,109 @@ jobs:
         run: bash scripts/ci-guards.sh
       - name: BFF 路由清单 ↔ app/api 对齐
         run: pnpm check:bff-map
+
+  # Fake 全路径：sandbox + tunnel + web BFF → e2e:bff（create→命令/文件→模板→用量→密钥→隧道→kill）
+  e2e-bff:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - name: Checkout f2b-web
+        uses: actions/checkout@v4
+        with:
+          path: f2b-web
+
+      - name: Checkout f2b-spec
+        uses: actions/checkout@v4
+        with:
+          repository: f2b-dev/f2b-spec
+          path: f2b-spec
+
+      - name: Checkout f2b-sandbox
+        uses: actions/checkout@v4
+        with:
+          repository: f2b-dev/f2b-sandbox
+          path: f2b-sandbox
+
+      - name: Checkout f2b-tunnel
+        uses: actions/checkout@v4
+        with:
+          repository: f2b-dev/f2b-tunnel
+          path: f2b-tunnel
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - run: corepack enable && corepack prepare pnpm@9.15.0 --activate
+
+      - name: Install deps
+        run: |
+          pnpm install --frozen-lockfile --dir f2b-spec
+          pnpm install --frozen-lockfile --dir f2b-sandbox
+          pnpm install --frozen-lockfile --dir f2b-tunnel
+          pnpm install --frozen-lockfile --dir f2b-web
+
+      - name: Start sandbox (fake :13287)
+        working-directory: f2b-sandbox
+        run: |
+          mkdir -p data
+          F2B_SANDBOX_BACKEND=fake F2B_AUTH_MODE=off PORT=13287 HOST=127.0.0.1 \
+            DATABASE_URL=file:./data/ci-e2e.db \
+            pnpm exec tsx src/server.ts &
+          for i in $(seq 1 80); do
+            if curl -sf http://127.0.0.1:13287/healthz >/dev/null; then
+              echo "sandbox up"
+              exit 0
+            fi
+            sleep 0.25
+          done
+          echo "sandbox healthz timeout" >&2
+          exit 1
+
+      - name: Start tunnel (:8790)
+        working-directory: f2b-tunnel
+        run: |
+          PORT=8790 HOST=127.0.0.1 F2B_TUNNEL_PUBLIC_BASE=http://127.0.0.1:8790 \
+            pnpm exec tsx src/server.ts &
+          for i in $(seq 1 80); do
+            if curl -sf http://127.0.0.1:8790/healthz >/dev/null; then
+              echo "tunnel up"
+              exit 0
+            fi
+            sleep 0.25
+          done
+          echo "tunnel healthz timeout" >&2
+          exit 1
+
+      - name: Build web
+        working-directory: f2b-web
+        env:
+          F2B_SANDBOX_URL: http://127.0.0.1:13287
+          F2B_TUNNEL_URL: http://127.0.0.1:8790
+        run: pnpm --filter @f2b/web build
+
+      - name: Start web (next start :13200)
+        working-directory: f2b-web
+        env:
+          F2B_SANDBOX_URL: http://127.0.0.1:13287
+          F2B_TUNNEL_URL: http://127.0.0.1:8790
+          PORT: "13200"
+          HOSTNAME: "127.0.0.1"
+        run: |
+          pnpm --filter @f2b/web exec next start --port 13200 --hostname 127.0.0.1 &
+          for i in $(seq 1 120); do
+            code=$(curl -s -o /dev/null -w "%{http_code}" http://127.0.0.1:13200/console/sandboxes || true)
+            if [[ "$code" == "200" ]]; then
+              echo "web up"
+              exit 0
+            fi
+            sleep 0.5
+          done
+          echo "web ready timeout" >&2
+          exit 1
+
+      - name: e2e:bff
+        working-directory: f2b-web
+        env:
+          F2B_WEB_URL: http://127.0.0.1:13200
+        run: pnpm e2e:bff

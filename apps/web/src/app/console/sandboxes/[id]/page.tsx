@@ -7,6 +7,7 @@ import {
   ArrowLeft,
   ArrowUp,
   Clock3,
+  Download,
   ExternalLink,
   File,
   FolderOpen,
@@ -22,6 +23,7 @@ import {
   Save,
   Terminal,
   Trash2,
+  Upload,
   Cpu,
 } from "lucide-react";
 import { Button } from "@f2b/ui";
@@ -56,6 +58,8 @@ import {
 import { SandboxStatusTag } from "@/lib/status";
 
 const DEFAULT_DIR = "/home/user";
+/** 控制台编辑器按文本打开的体积上限；更大走 base64 下载提示 */
+const TEXT_OPEN_MAX_BYTES = 512 * 1024;
 
 function parentPath(path: string): string {
   if (!path || path === "/") return "/";
@@ -63,6 +67,51 @@ function parentPath(path: string): string {
   if (trimmed === "/") return "/";
   const idx = trimmed.lastIndexOf("/");
   return idx <= 0 ? "/" : trimmed.slice(0, idx);
+}
+
+function bytesToBase64(bytes: Uint8Array): string {
+  let binary = "";
+  const chunk = 0x8000;
+  for (let i = 0; i < bytes.length; i += chunk) {
+    binary += String.fromCharCode(...bytes.subarray(i, i + chunk));
+  }
+  return btoa(binary);
+}
+
+function base64ToBytes(b64: string): Uint8Array {
+  const binary = atob(b64);
+  const out = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) out[i] = binary.charCodeAt(i);
+  return out;
+}
+
+function looksBinary(bytes: Uint8Array): boolean {
+  const n = Math.min(bytes.length, 8192);
+  let suspicious = 0;
+  for (let i = 0; i < n; i++) {
+    const c = bytes[i]!;
+    if (c === 0) return true;
+    // 控制字符（保留 \t \n \r）
+    if (c < 9 || (c > 13 && c < 32)) suspicious++;
+  }
+  return n > 0 && suspicious / n > 0.1;
+}
+
+function triggerBrowserDownload(
+  filename: string,
+  bytes: Uint8Array,
+  mime = "application/octet-stream",
+) {
+  // 拷贝到独立 ArrayBuffer，避免 SharedArrayBuffer 类型不兼容 BlobPart
+  const copy = new Uint8Array(bytes.byteLength);
+  copy.set(bytes);
+  const blob = new Blob([copy.buffer], { type: mime });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename || "download.bin";
+  a.click();
+  URL.revokeObjectURL(url);
 }
 
 export default function SandboxDetailPage() {
@@ -79,11 +128,16 @@ export default function SandboxDetailPage() {
   /** 终端命令 cwd（可与文件浏览器分开） */
   const [termCwd, setTermCwd] = useState(DEFAULT_DIR);
   const [termEnvText, setTermEnvText] = useState("");
+  /** 命令级超时（秒）；空 = 不传 timeoutMs */
+  const [termTimeoutSec, setTermTimeoutSec] = useState("");
   const [files, setFiles] = useState<FileEntry[]>([]);
   const [filesError, setFilesError] = useState<string | null>(null);
   const [selectedPath, setSelectedPath] = useState<string | null>(null);
   const [editor, setEditor] = useState("");
   const [editorDirty, setEditorDirty] = useState(false);
+  /** 当前选中文件为二进制：不进文本编辑器，仅下载/覆盖上传 */
+  const [editorBinary, setEditorBinary] = useState(false);
+  const [binarySize, setBinarySize] = useState<number | null>(null);
   const [newName, setNewName] = useState("");
   const [busy, setBusy] = useState(false);
   const [filesBusy, setFilesBusy] = useState(false);
@@ -158,16 +212,30 @@ export default function SandboxDetailPage() {
       setSelectedPath(null);
       setEditor("");
       setEditorDirty(false);
+      setEditorBinary(false);
+      setBinarySize(null);
       await loadFiles(entry.path);
       return;
     }
     setFilesBusy(true);
     setFilesError(null);
     try {
-      const file = await readFile(params.id, entry.path);
+      // 先 base64 读，判定文本/二进制
+      const file = await readFile(params.id, entry.path, {
+        encoding: "base64",
+      });
+      const bytes = base64ToBytes(file.content);
       setSelectedPath(entry.path);
-      setEditor(file.content);
       setEditorDirty(false);
+      if (bytes.length > TEXT_OPEN_MAX_BYTES || looksBinary(bytes)) {
+        setEditorBinary(true);
+        setBinarySize(bytes.length);
+        setEditor("");
+      } else {
+        setEditorBinary(false);
+        setBinarySize(null);
+        setEditor(new TextDecoder("utf-8").decode(bytes));
+      }
     } catch (e) {
       setFilesError(e instanceof Error ? e.message : String(e));
     } finally {
@@ -176,12 +244,50 @@ export default function SandboxDetailPage() {
   }
 
   async function onSaveFile() {
-    if (!selectedPath || !sandbox) return;
+    if (!selectedPath || !sandbox || editorBinary) return;
     setFilesBusy(true);
     setFilesError(null);
     try {
       await writeFile(sandbox.id, selectedPath, editor);
       setEditorDirty(false);
+      await loadFiles(cwd);
+    } catch (e) {
+      setFilesError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setFilesBusy(false);
+    }
+  }
+
+  async function onDownloadPath(path: string) {
+    if (!sandbox) return;
+    setFilesBusy(true);
+    setFilesError(null);
+    try {
+      const file = await readFile(sandbox.id, path, { encoding: "base64" });
+      const bytes = base64ToBytes(file.content);
+      const name = path.split("/").filter(Boolean).pop() || "download.bin";
+      triggerBrowserDownload(name, bytes);
+    } catch (e) {
+      setFilesError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setFilesBusy(false);
+    }
+  }
+
+  async function onUploadFiles(list: FileList | null) {
+    if (!list?.length || !sandbox) return;
+    setFilesBusy(true);
+    setFilesError(null);
+    try {
+      for (const file of Array.from(list)) {
+        if (file.name.includes("..") || file.name.includes("/")) {
+          throw new Error(`非法文件名: ${file.name}`);
+        }
+        const path = cwd === "/" ? `/${file.name}` : `${cwd}/${file.name}`;
+        const buf = new Uint8Array(await file.arrayBuffer());
+        const b64 = bytesToBase64(buf);
+        await writeFile(sandbox.id, path, b64, { encoding: "base64" });
+      }
       await loadFiles(cwd);
     } catch (e) {
       setFilesError(e instanceof Error ? e.message : String(e));
@@ -207,6 +313,8 @@ export default function SandboxDetailPage() {
       setSelectedPath(path);
       setEditor("");
       setEditorDirty(false);
+      setEditorBinary(false);
+      setBinarySize(null);
     } catch (e) {
       setFilesError(e instanceof Error ? e.message : String(e));
     } finally {
@@ -280,6 +388,8 @@ export default function SandboxDetailPage() {
         setSelectedPath(null);
         setEditor("");
         setEditorDirty(false);
+        setEditorBinary(false);
+        setBinarySize(null);
       }
       await loadFiles(cwd);
     } catch (e) {
@@ -309,7 +419,12 @@ export default function SandboxDetailPage() {
     setBusy(true);
     const env = parseTermEnv(termEnvText);
     const runCwd = termCwd.trim() || DEFAULT_DIR;
-    setLog((prev) => `${prev}$ ${line}\n`);
+    const sec = Number(termTimeoutSec);
+    const timeoutMs =
+      Number.isFinite(sec) && sec > 0 ? Math.round(sec * 1000) : undefined;
+    const timeoutHint =
+      timeoutMs != null ? `  # timeoutMs=${timeoutMs}` : "";
+    setLog((prev) => `${prev}$ ${line}${timeoutHint}\n`);
     let gotChunk = false;
     try {
       const result = await runCommandStream(
@@ -328,6 +443,7 @@ export default function SandboxDetailPage() {
         {
           cwd: runCwd,
           ...(env ? { env } : {}),
+          ...(timeoutMs != null ? { timeoutMs } : {}),
         },
       );
       if (!gotChunk) {
@@ -612,7 +728,7 @@ export default function SandboxDetailPage() {
               <pre className="max-h-80 overflow-auto rounded-md bg-[#0b1220] p-3 font-mono text-xs leading-relaxed text-emerald-100">
                 {log}
               </pre>
-              <div className="grid gap-2 sm:grid-cols-2">
+              <div className="grid gap-2 sm:grid-cols-3">
                 <div className="space-y-1">
                   <label className="text-xs text-muted-foreground">
                     工作目录 cwd
@@ -633,6 +749,21 @@ export default function SandboxDetailPage() {
                     value={termEnvText}
                     onChange={(e) => setTermEnvText(e.target.value)}
                     placeholder="FOO=bar,BAZ=1"
+                    disabled={busy || sandbox.status !== "running"}
+                    className="font-mono text-xs"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-xs text-muted-foreground">
+                    超时（秒，可选）
+                  </label>
+                  <Input
+                    type="number"
+                    min={1}
+                    max={1800}
+                    value={termTimeoutSec}
+                    onChange={(e) => setTermTimeoutSec(e.target.value)}
+                    placeholder="空=默认"
                     disabled={busy || sandbox.status !== "running"}
                     className="font-mono text-xs"
                   />
@@ -786,6 +917,29 @@ export default function SandboxDetailPage() {
                         >
                           新建
                         </Button>
+                        <label className="inline-flex">
+                          <input
+                            type="file"
+                            className="hidden"
+                            multiple
+                            disabled={filesBusy}
+                            onChange={(e) => {
+                              void onUploadFiles(e.target.files);
+                              e.target.value = "";
+                            }}
+                          />
+                          <Button
+                            type="button"
+                            variant="secondary"
+                            disabled={filesBusy}
+                            asChild
+                          >
+                            <span>
+                              <Upload className="h-3.5 w-3.5" />
+                              上传
+                            </span>
+                          </Button>
+                        </label>
                       </div>
                     </div>
 
@@ -796,8 +950,23 @@ export default function SandboxDetailPage() {
                         </code>
                         <Button
                           size="sm"
+                          variant="secondary"
+                          disabled={filesBusy || !selectedPath}
+                          title="下载（base64）"
+                          onClick={() =>
+                            selectedPath && void onDownloadPath(selectedPath)
+                          }
+                        >
+                          <Download className="h-3.5 w-3.5" />
+                          下载
+                        </Button>
+                        <Button
+                          size="sm"
                           disabled={
-                            filesBusy || !selectedPath || !editorDirty
+                            filesBusy ||
+                            !selectedPath ||
+                            editorBinary ||
+                            !editorDirty
                           }
                           onClick={() => void onSaveFile()}
                         >
@@ -805,20 +974,90 @@ export default function SandboxDetailPage() {
                           保存
                         </Button>
                       </div>
-                      <Textarea
-                        value={editor}
-                        onChange={(e) => {
-                          setEditor(e.target.value);
-                          setEditorDirty(true);
-                        }}
-                        disabled={!selectedPath || filesBusy}
-                        placeholder={
-                          selectedPath
-                            ? "文件内容"
-                            : "点击左侧文件打开编辑器"
-                        }
-                        className="min-h-60 flex-1 font-mono text-xs"
-                      />
+                      {editorBinary && selectedPath ? (
+                        <div className="flex min-h-60 flex-1 flex-col items-center justify-center gap-3 rounded-md border border-dashed bg-muted/30 p-6 text-center text-sm text-muted-foreground">
+                          <File className="h-8 w-8 text-sky-600" />
+                          <div>
+                            二进制或过大文件
+                            {binarySize != null
+                              ? `（${binarySize.toLocaleString()} B）`
+                              : ""}
+                            ，不支持文本编辑。
+                          </div>
+                          <div className="flex flex-wrap justify-center gap-2">
+                            <Button
+                              size="sm"
+                              disabled={filesBusy}
+                              onClick={() => void onDownloadPath(selectedPath)}
+                            >
+                              <Download className="h-3.5 w-3.5" />
+                              下载
+                            </Button>
+                            <label className="inline-flex">
+                              <input
+                                type="file"
+                                className="hidden"
+                                disabled={filesBusy}
+                                onChange={async (e) => {
+                                  const f = e.target.files?.[0];
+                                  e.target.value = "";
+                                  if (!f || !sandbox || !selectedPath) return;
+                                  setFilesBusy(true);
+                                  setFilesError(null);
+                                  try {
+                                    const buf = new Uint8Array(
+                                      await f.arrayBuffer(),
+                                    );
+                                    await writeFile(
+                                      sandbox.id,
+                                      selectedPath,
+                                      bytesToBase64(buf),
+                                      { encoding: "base64" },
+                                    );
+                                    setBinarySize(buf.length);
+                                    await loadFiles(cwd);
+                                  } catch (err) {
+                                    setFilesError(
+                                      err instanceof Error
+                                        ? err.message
+                                        : String(err),
+                                    );
+                                  } finally {
+                                    setFilesBusy(false);
+                                  }
+                                }}
+                              />
+                              <Button
+                                type="button"
+                                size="sm"
+                                variant="secondary"
+                                disabled={filesBusy}
+                                asChild
+                              >
+                                <span>
+                                  <Upload className="h-3.5 w-3.5" />
+                                  覆盖上传
+                                </span>
+                              </Button>
+                            </label>
+                          </div>
+                        </div>
+                      ) : (
+                        <Textarea
+                          value={editor}
+                          onChange={(e) => {
+                            setEditor(e.target.value);
+                            setEditorDirty(true);
+                          }}
+                          disabled={!selectedPath || filesBusy}
+                          placeholder={
+                            selectedPath
+                              ? "文件内容"
+                              : "点击左侧文件打开编辑器"
+                          }
+                          className="min-h-60 flex-1 font-mono text-xs"
+                        />
+                      )}
                     </div>
                   </div>
                 </>

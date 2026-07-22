@@ -6,6 +6,7 @@
 
 ### Added
 
+- 插件 `sandboxBffRoutes` + `pnpm check:bff-map`；README 补「新增 BFF 路由」步骤
 - `e2e:bff` 覆盖 cwd / command timeoutMs / 文件 mkdir+rename / PATCH timeoutMs
 
 ### Changed

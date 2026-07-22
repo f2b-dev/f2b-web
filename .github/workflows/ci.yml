@@ -27,3 +27,5 @@ jobs:
 
       - name: 硬约束回归（无 antd / 无管理密钥进 client）
         run: bash scripts/ci-guards.sh
+      - name: BFF 路由清单 ↔ app/api 对齐
+        run: pnpm check:bff-map

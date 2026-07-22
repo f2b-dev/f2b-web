@@ -33,9 +33,16 @@ async function parse<T>(res: Response): Promise<T> {
   return data as T;
 }
 
-export async function listSandboxes(): Promise<ApiSandbox[]> {
+export async function listSandboxes(opts?: {
+  projectId?: string;
+  status?: string;
+}): Promise<ApiSandbox[]> {
+  const sp = new URLSearchParams();
+  if (opts?.projectId) sp.set("projectId", opts.projectId);
+  if (opts?.status) sp.set("status", opts.status);
+  const q = sp.toString() ? `?${sp.toString()}` : "";
   const data = await parse<{ sandboxes: ApiSandbox[] }>(
-    await fetch("/api/sandboxes", { cache: "no-store" }),
+    await fetch(`/api/sandboxes${q}`, { cache: "no-store" }),
   );
   return data.sandboxes ?? [];
 }

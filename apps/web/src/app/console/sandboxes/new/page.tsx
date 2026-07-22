@@ -52,6 +52,9 @@ function NewSandboxForm() {
   const [timeoutMin, setTimeoutMin] = useState(30);
   const [internet, setInternet] = useState(false);
   const [region, setRegion] = useState("cn-hangzhou");
+  const [metaKey, setMetaKey] = useState("");
+  const [metaVal, setMetaVal] = useState("");
+  const [metadata, setMetadata] = useState<Record<string, string>>({});
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -94,6 +97,8 @@ function NewSandboxForm() {
         timeoutMs: timeoutMin * 60_000,
         allowInternetAccess: internet,
         projectId: "default",
+        metadata:
+          Object.keys(metadata).length > 0 ? metadata : undefined,
       });
       router.push(`/console/sandboxes/${sbx.id}`);
     } catch (err) {
@@ -233,6 +238,68 @@ function NewSandboxForm() {
                 <Switch checked={internet} onCheckedChange={setInternet} />
               </div>
 
+              <div className="space-y-2">
+                <Label>Metadata（可选）</Label>
+                <p className="text-xs text-muted-foreground">
+                  键值标签，创建后可在详情页继续合并。
+                </p>
+                {Object.keys(metadata).length > 0 ? (
+                  <ul className="space-y-1 font-mono text-xs">
+                    {Object.entries(metadata).map(([k, v]) => (
+                      <li
+                        key={k}
+                        className="flex items-center justify-between gap-2 rounded border px-2 py-1"
+                      >
+                        <span>
+                          <span className="text-muted-foreground">{k}=</span>
+                          {v}
+                        </span>
+                        <button
+                          type="button"
+                          className="text-muted-foreground hover:text-destructive"
+                          onClick={() =>
+                            setMetadata((prev) => {
+                              const next = { ...prev };
+                              delete next[k];
+                              return next;
+                            })
+                          }
+                        >
+                          移除
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                ) : null}
+                <div className="flex flex-wrap gap-2">
+                  <Input
+                    className="w-28"
+                    placeholder="key"
+                    value={metaKey}
+                    onChange={(e) => setMetaKey(e.target.value)}
+                  />
+                  <Input
+                    className="min-w-[8rem] flex-1"
+                    placeholder="value"
+                    value={metaVal}
+                    onChange={(e) => setMetaVal(e.target.value)}
+                  />
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    onClick={() => {
+                      const k = metaKey.trim();
+                      if (!k) return;
+                      setMetadata((prev) => ({ ...prev, [k]: metaVal }));
+                      setMetaKey("");
+                      setMetaVal("");
+                    }}
+                  >
+                    添加
+                  </Button>
+                </div>
+              </div>
+
               <Button
                 type="submit"
                 disabled={submitting || templates.length === 0}
@@ -271,6 +338,16 @@ function NewSandboxForm() {
             </div>
             <div>
               区域：<span className="text-foreground">{region}</span>
+            </div>
+            <div>
+              Metadata：
+              <span className="text-foreground">
+                {Object.keys(metadata).length === 0
+                  ? "（无）"
+                  : Object.entries(metadata)
+                      .map(([k, v]) => `${k}=${v}`)
+                      .join(", ")}
+              </span>
             </div>
           </CardContent>
         </Card>

@@ -14,12 +14,42 @@ done
 echo "== list =="
 curl -sf "$BASE/api/sandboxes" >/dev/null
 
-echo "== create =="
+PROJ="e2e-proj-$(date +%s | tail -c 5)"
+echo "== create (projectId=$PROJ) =="
 CREATE=$(curl -sf -X POST "$BASE/api/sandboxes" \
   -H 'content-type: application/json' \
-  -d "{\"name\":\"$NAME\",\"template\":\"base\",\"timeoutMs\":120000}")
+  -d "{\"name\":\"$NAME\",\"template\":\"base\",\"timeoutMs\":120000,\"projectId\":\"$PROJ\"}")
 ID=$(node -e "const j=JSON.parse(process.argv[1]); if(!j.sandbox?.id) process.exit(2); console.log(j.sandbox.id)" "$CREATE")
 echo "  id=$ID"
+
+echo "== list filter projectId + status =="
+LIST_P=$(curl -sf "$BASE/api/sandboxes?projectId=$PROJ")
+node -e '
+  const j=JSON.parse(process.argv[1]);
+  const id=process.argv[2];
+  const arr=j.sandboxes||[];
+  if(!arr.some(s=>s.id===id)) { console.error(JSON.stringify(j)); process.exit(22); }
+  if(arr.some(s=>s.projectId && s.projectId!==process.argv[3])) process.exit(23);
+  console.log("  projectId filter ok n="+arr.length);
+' "$LIST_P" "$ID" "$PROJ"
+LIST_S=$(curl -sf "$BASE/api/sandboxes?status=running")
+node -e '
+  const j=JSON.parse(process.argv[1]);
+  const id=process.argv[2];
+  const arr=j.sandboxes||[];
+  if(!arr.some(s=>s.id===id)) process.exit(24);
+  if(arr.some(s=>s.status!=="running")) process.exit(25);
+  console.log("  status=running filter ok n="+arr.length);
+' "$LIST_S" "$ID"
+LIST_K=$(curl -sf "$BASE/api/sandboxes?status=killed")
+node -e '
+  const j=JSON.parse(process.argv[1]);
+  const id=process.argv[2];
+  const arr=j.sandboxes||[];
+  if(arr.some(s=>s.id===id)) process.exit(26);
+  if(arr.some(s=>s.status!=="killed")) process.exit(27);
+  console.log("  status=killed excludes live id ok");
+' "$LIST_K" "$ID"
 
 echo "== command =="
 CMD=$(curl -sf -X POST "$BASE/api/sandboxes/$ID/commands" \

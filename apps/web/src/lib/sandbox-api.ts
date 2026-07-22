@@ -14,6 +14,7 @@ export type ApiSandbox = {
   cpu: string;
   memory: string;
   error: string | null;
+  metadata?: Record<string, string>;
   createdAt: string;
   updatedAt: string;
   startedAt: string | null;
@@ -54,10 +55,29 @@ export async function createSandbox(body: {
   timeoutMs?: number;
   allowInternetAccess?: boolean;
   projectId?: string;
+  metadata?: Record<string, string>;
 }): Promise<ApiSandbox> {
   const data = await parse<{ sandbox: ApiSandbox }>(
     await fetch("/api/sandboxes", {
       method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(body),
+    }),
+  );
+  return data.sandbox;
+}
+
+/** 延期 timeoutMs 与/或浅合并 metadata（活动沙箱） */
+export async function updateSandbox(
+  id: string,
+  body: {
+    timeoutMs?: number | null;
+    metadata?: Record<string, string>;
+  },
+): Promise<ApiSandbox> {
+  const data = await parse<{ sandbox: ApiSandbox }>(
+    await fetch(`/api/sandboxes/${encodeURIComponent(id)}`, {
+      method: "PATCH",
       headers: { "content-type": "application/json" },
       body: JSON.stringify(body),
     }),

@@ -37,6 +37,7 @@ import {
   readFile,
   resumeSandbox,
   runCommandStream,
+  updateSandbox,
   writeFile,
   type ApiSandbox,
   type FileEntry,
@@ -82,6 +83,11 @@ export default function SandboxDetailPage() {
   const [tunnelsBusy, setTunnelsBusy] = useState(false);
   const [tunnelPort, setTunnelPort] = useState("3000");
   const [tunnelTarget, setTunnelTarget] = useState("");
+  const [extendMin, setExtendMin] = useState("30");
+  const [metaBusy, setMetaBusy] = useState(false);
+  const [metaError, setMetaError] = useState<string | null>(null);
+  const [metaKey, setMetaKey] = useState("");
+  const [metaVal, setMetaVal] = useState("");
 
   const loadTunnels = useCallback(async (sandboxId: string) => {
     setTunnelsBusy(true);
@@ -311,6 +317,69 @@ export default function SandboxDetailPage() {
       setTunnelsError(e instanceof Error ? e.message : String(e));
     } finally {
       setTunnelsBusy(false);
+    }
+  }
+
+  const isActive =
+    sandbox?.status === "running" ||
+    sandbox?.status === "paused" ||
+    sandbox?.status === "provisioning";
+
+  async function onExtendTimeout() {
+    if (!sandbox || !isActive) return;
+    const min = Number(extendMin);
+    if (!Number.isFinite(min) || min <= 0) {
+      setMetaError("请输入正数分钟");
+      return;
+    }
+    setMetaBusy(true);
+    setMetaError(null);
+    try {
+      const sb = await updateSandbox(sandbox.id, {
+        timeoutMs: Math.round(min * 60_000),
+      });
+      setSandbox(sb);
+    } catch (e) {
+      setMetaError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setMetaBusy(false);
+    }
+  }
+
+  async function onClearTimeout() {
+    if (!sandbox || !isActive) return;
+    setMetaBusy(true);
+    setMetaError(null);
+    try {
+      const sb = await updateSandbox(sandbox.id, { timeoutMs: null });
+      setSandbox(sb);
+    } catch (e) {
+      setMetaError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setMetaBusy(false);
+    }
+  }
+
+  async function onAddMetadata() {
+    if (!sandbox || !isActive) return;
+    const k = metaKey.trim();
+    if (!k) {
+      setMetaError("metadata 键不能为空");
+      return;
+    }
+    setMetaBusy(true);
+    setMetaError(null);
+    try {
+      const sb = await updateSandbox(sandbox.id, {
+        metadata: { [k]: metaVal },
+      });
+      setSandbox(sb);
+      setMetaKey("");
+      setMetaVal("");
+    } catch (e) {
+      setMetaError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setMetaBusy(false);
     }
   }
 
@@ -674,7 +743,104 @@ export default function SandboxDetailPage() {
               </ul>
             </TabsContent>
 
-            <TabsContent value="meta" className="pt-3">
+            <TabsContent value="meta" className="space-y-4 pt-3">
+              {metaError ? (
+                <Alert variant="destructive">
+                  <AlertDescription>{metaError}</AlertDescription>
+                </Alert>
+              ) : null}
+              <div className="grid gap-3 sm:grid-cols-2">
+                <Card>
+                  <CardContent className="space-y-3 pt-4">
+                    <div className="text-sm font-medium">存活超时</div>
+                    <p className="text-xs text-muted-foreground">
+                      从{" "}
+                      <code className="text-[11px]">
+                        {sandbox.startedAt ?? sandbox.createdAt}
+                      </code>{" "}
+                      起算；当前{" "}
+                      {sandbox.timeoutMs == null
+                        ? "未设置"
+                        : `${Math.round(sandbox.timeoutMs / 60_000)} 分钟（${sandbox.timeoutMs} ms）`}
+                      。
+                    </p>
+                    <div className="flex flex-wrap items-end gap-2">
+                      <div className="space-y-1">
+                        <label className="text-xs text-muted-foreground">
+                          延期至（分钟）
+                        </label>
+                        <Input
+                          className="w-28"
+                          type="number"
+                          min={1}
+                          value={extendMin}
+                          onChange={(e) => setExtendMin(e.target.value)}
+                          disabled={!isActive || metaBusy}
+                        />
+                      </div>
+                      <Button
+                        size="sm"
+                        onClick={() => void onExtendTimeout()}
+                        disabled={!isActive || metaBusy}
+                      >
+                        <Clock3 className="h-3.5 w-3.5" />
+                        应用
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => void onClearTimeout()}
+                        disabled={!isActive || metaBusy}
+                      >
+                        取消超时
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardContent className="space-y-3 pt-4">
+                    <div className="text-sm font-medium">Metadata</div>
+                    <p className="text-xs text-muted-foreground">
+                      键值浅合并；仅 string。活动沙箱可改。
+                    </p>
+                    <ul className="max-h-28 space-y-1 overflow-auto font-mono text-xs">
+                      {Object.keys(sandbox.metadata ?? {}).length === 0 ? (
+                        <li className="text-muted-foreground">（空）</li>
+                      ) : (
+                        Object.entries(sandbox.metadata ?? {}).map(([k, v]) => (
+                          <li key={k}>
+                            <span className="text-muted-foreground">{k}=</span>
+                            {v}
+                          </li>
+                        ))
+                      )}
+                    </ul>
+                    <div className="flex flex-wrap gap-2">
+                      <Input
+                        className="w-28"
+                        placeholder="key"
+                        value={metaKey}
+                        onChange={(e) => setMetaKey(e.target.value)}
+                        disabled={!isActive || metaBusy}
+                      />
+                      <Input
+                        className="min-w-[8rem] flex-1"
+                        placeholder="value"
+                        value={metaVal}
+                        onChange={(e) => setMetaVal(e.target.value)}
+                        disabled={!isActive || metaBusy}
+                      />
+                      <Button
+                        size="sm"
+                        onClick={() => void onAddMetadata()}
+                        disabled={!isActive || metaBusy}
+                      >
+                        合并
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
               <pre className="overflow-auto rounded-md border bg-muted/30 p-3 font-mono text-xs">
                 {JSON.stringify(sandbox, null, 2)}
               </pre>

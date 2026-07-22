@@ -157,3 +157,13 @@ jobs:
         env:
           F2B_WEB_URL: http://127.0.0.1:13200
         run: pnpm e2e:bff
+
+      - name: Install Playwright Chromium
+        working-directory: f2b-web
+        run: pnpm exec playwright install --with-deps chromium
+
+      - name: e2e:ui (Playwright 冒烟)
+        working-directory: f2b-web
+        env:
+          F2B_WEB_URL: http://127.0.0.1:13200
+        run: pnpm e2e:ui

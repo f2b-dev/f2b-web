@@ -8,6 +8,8 @@
     "typecheck": "pnpm -r run typecheck",
     "lint": "pnpm --filter @f2b/web lint",
     "e2e:bff": "bash scripts/e2e-bff.sh",
+    "e2e:ui": "playwright test",
+    "e2e:ui:install": "playwright install chromium",
     "ci:guards": "bash scripts/ci-guards.sh",
     "check:bff-map": "bash scripts/check-bff-map.sh",
     "audit:prod": "pnpm audit --prod --registry https://registry.npmjs.org"
@@ -19,6 +21,7 @@
     }
   },
   "devDependencies": {
+    "@playwright/test": "1.51.1",
     "typescript": "^5.8.3"
   }
 }

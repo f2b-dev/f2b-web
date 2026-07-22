@@ -7,3 +7,6 @@ dist
 .env.local
 .turbo
 tsconfig.tsbuildinfo
+test-results/
+playwright-report/
+blob-report/

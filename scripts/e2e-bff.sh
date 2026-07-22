@@ -5,7 +5,14 @@ BASE="${F2B_WEB_URL:-http://127.0.0.1:13200}"
 NAME="e2e-$(date +%s | tail -c 6)"
 
 echo "== pages =="
-for p in /console/sandboxes /console/sandboxes/new; do
+for p in \
+  /console \
+  /console/sandboxes \
+  /console/sandboxes/new \
+  /console/keys \
+  /console/templates \
+  /console/usage
+do
   code=$(curl -sf -o /dev/null -w "%{http_code}" "$BASE$p")
   [[ "$code" == "200" ]] || { echo "page $p → $code"; exit 1; }
   echo "  $p 200"

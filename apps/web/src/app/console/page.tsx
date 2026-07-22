@@ -4,6 +4,7 @@ import {
   ChartColumn,
   Clock3,
   Code2,
+  Gauge,
   KeyRound,
   Plus,
   Zap,
@@ -21,6 +22,7 @@ import { proxyToSandbox } from "@f2b/bff-core";
 import { SandboxStatusTag } from "@/lib/status";
 import { formatDuration, type ApiSandbox } from "@/lib/sandbox-api";
 import type { UsageSummary } from "@/lib/usage-api";
+import type { SandboxHealth } from "@/lib/health-api";
 
 export const dynamic = "force-dynamic";
 
@@ -60,10 +62,21 @@ async function loadUsage(): Promise<UsageSummary | null> {
   }
 }
 
+async function loadHealth(): Promise<SandboxHealth | null> {
+  try {
+    const res = await proxyToSandbox("/healthz", { method: "GET" });
+    if (!res.ok) return null;
+    return (await res.json()) as SandboxHealth;
+  } catch {
+    return null;
+  }
+}
+
 export default async function ConsoleDashboardPage() {
-  const [{ sandboxes, error }, usage] = await Promise.all([
+  const [{ sandboxes, error }, usage, health] = await Promise.all([
     loadSandboxes(),
     loadUsage(),
+    loadHealth(),
   ]);
   const running = sandboxes.filter((s) => s.status === "running").length;
   const recent = [...sandboxes]
@@ -72,6 +85,21 @@ export default async function ConsoleDashboardPage() {
         new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
     )
     .slice(0, 5);
+
+  const cap = health?.capacity;
+  const capActive = cap?.active ?? health?.activeSandboxes;
+  const capMax = cap?.max ?? health?.maxConcurrentSandboxes ?? null;
+  const capLabel =
+    capMax != null && capActive != null
+      ? `${capActive} / ${capMax}`
+      : capActive != null
+        ? String(capActive)
+        : "—";
+  const capNearFull =
+    capMax != null &&
+    capActive != null &&
+    capMax > 0 &&
+    capActive / capMax >= 0.8;
 
   const stats = [
     {
@@ -82,11 +110,11 @@ export default async function ConsoleDashboardPage() {
       iconClass: "text-emerald-600",
     },
     {
-      title: "记录总数",
-      value: String(sandboxes.length),
-      suffix: "条",
-      icon: Box,
-      iconClass: "text-sky-600",
+      title: "并发占用",
+      value: capLabel,
+      suffix: capMax != null ? "槽" : capActive != null ? "活动" : undefined,
+      icon: Gauge,
+      iconClass: capNearFull ? "text-amber-600" : "text-sky-600",
     },
     {
       title: "近 7 日沙箱时",
@@ -112,6 +140,7 @@ export default async function ConsoleDashboardPage() {
           <h1 className="text-lg font-semibold">概览</h1>
           <p className="text-sm text-muted-foreground">
             项目 default · 数据来自 f2b-sandbox（BFF）
+            {health?.backend ? ` · 后端 ${health.backend}` : ""}
           </p>
         </div>
         <Button asChild>
@@ -129,6 +158,56 @@ export default async function ConsoleDashboardPage() {
             <code className="text-xs">F2B_SANDBOX_URL</code> 正确。
           </AlertDescription>
         </Alert>
+      )}
+
+      {capNearFull && (
+        <Alert>
+          <AlertDescription>
+            并发接近上限（{capActive}/{capMax}）。再创建可能返回{" "}
+            <code className="text-xs">CAPACITY_EXCEEDED</code>
+            。可销毁空闲沙箱，或提高{" "}
+            <code className="text-xs">F2B_MAX_CONCURRENT_SANDBOXES</code>
+            （须匹配主机规格）。
+          </AlertDescription>
+        </Alert>
+      )}
+
+      {health && (
+        <Card>
+          <CardContent className="flex flex-wrap items-center gap-x-6 gap-y-2 p-4 text-sm">
+            <div>
+              <span className="text-muted-foreground">后端 </span>
+              <span className="font-mono font-medium">
+                {health.backend ?? "—"}
+              </span>
+            </div>
+            <div>
+              <span className="text-muted-foreground">鉴权 </span>
+              <span className="font-mono font-medium">
+                {health.auth ?? "—"}
+              </span>
+            </div>
+            <div>
+              <span className="text-muted-foreground">超时回收 </span>
+              <span className="font-mono font-medium">
+                {health.reaper?.enabled
+                  ? `开 · ${health.reaper.intervalMs}ms`
+                  : "关"}
+              </span>
+            </div>
+            <div>
+              <span className="text-muted-foreground">并发硬顶 </span>
+              <span className="font-mono font-medium">
+                {capMax != null ? capMax : "不限制"}
+              </span>
+              {cap?.available != null && (
+                <span className="ml-2 text-xs text-muted-foreground">
+                  剩余 {cap.available}
+                </span>
+              )}
+            </div>
+          </CardContent>
+        </Card>
       )}
 
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">

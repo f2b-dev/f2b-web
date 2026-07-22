@@ -1,5 +1,8 @@
 /** 浏览器侧调用同源 BFF /api/sandboxes */
 
+/** 控制台默认项目；多租户完整模型后置，现仅轻量 projectId 字段 */
+export const DEFAULT_PROJECT_ID = "default";
+
 export type ApiSandbox = {
   id: string;
   name: string;

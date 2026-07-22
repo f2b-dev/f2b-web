@@ -18,7 +18,7 @@ import {
   SelectValue,
 } from "@f2b/ui";
 import { Alert, AlertDescription } from "@f2b/ui";
-import { createSandbox } from "@/lib/sandbox-api";
+import { createSandbox, DEFAULT_PROJECT_ID } from "@/lib/sandbox-api";
 import {
   fetchTemplates,
   type TemplateRef,
@@ -52,6 +52,7 @@ function NewSandboxForm() {
   const [timeoutMin, setTimeoutMin] = useState(30);
   const [internet, setInternet] = useState(false);
   const [region, setRegion] = useState("cn-hangzhou");
+  const [projectId, setProjectId] = useState(DEFAULT_PROJECT_ID);
   const [metaKey, setMetaKey] = useState("");
   const [metaVal, setMetaVal] = useState("");
   const [metadata, setMetadata] = useState<Record<string, string>>({});
@@ -96,7 +97,7 @@ function NewSandboxForm() {
         template,
         timeoutMs: timeoutMin * 60_000,
         allowInternetAccess: internet,
-        projectId: "default",
+        projectId: projectId.trim() || DEFAULT_PROJECT_ID,
         metadata:
           Object.keys(metadata).length > 0 ? metadata : undefined,
       });
@@ -228,6 +229,22 @@ function NewSandboxForm() {
                 </div>
               </div>
 
+              <div className="space-y-2">
+                <Label htmlFor="projectId">项目 ID</Label>
+                <Input
+                  id="projectId"
+                  className="font-mono text-sm"
+                  value={projectId}
+                  onChange={(e) => setProjectId(e.target.value)}
+                  placeholder={DEFAULT_PROJECT_ID}
+                />
+                <p className="text-xs text-muted-foreground">
+                  轻量归属字段，默认{" "}
+                  <span className="font-mono">{DEFAULT_PROJECT_ID}</span>
+                  ；列表可按此筛选。完整多租户 / RBAC 后置。
+                </p>
+              </div>
+
               <div className="flex items-center justify-between rounded-md border p-3">
                 <div>
                   <div className="text-sm font-medium">允许公网访问</div>
@@ -338,6 +355,12 @@ function NewSandboxForm() {
             </div>
             <div>
               区域：<span className="text-foreground">{region}</span>
+            </div>
+            <div>
+              项目：
+              <span className="font-mono text-foreground">
+                {projectId.trim() || DEFAULT_PROJECT_ID}
+              </span>
             </div>
             <div>
               Metadata：

@@ -28,6 +28,7 @@ import {
 } from "@/lib/sandbox-api";
 import { SandboxStatusTag } from "@/lib/status";
 import { Alert, AlertDescription } from "@f2b/ui";
+import { Input } from "@f2b/ui";
 import {
   Select,
   SelectContent,
@@ -57,6 +58,9 @@ export default function SandboxesPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [statusFilter, setStatusFilter] = useState("all");
+  /** 输入框草稿；回车 / 应用 / 刷新时写入 projectIdFilter */
+  const [projectIdInput, setProjectIdInput] = useState("");
+  const [projectIdFilter, setProjectIdFilter] = useState("");
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [busyId, setBusyId] = useState<string | null>(null);
   const [bulkBusy, setBulkBusy] = useState(false);
@@ -65,8 +69,12 @@ export default function SandboxesPage() {
     setLoading(true);
     setError(null);
     try {
+      const opts: { status?: string; projectId?: string } = {};
+      if (statusFilter !== "all") opts.status = statusFilter;
+      const pid = projectIdFilter.trim();
+      if (pid) opts.projectId = pid;
       const list = await listSandboxes(
-        statusFilter === "all" ? undefined : { status: statusFilter },
+        Object.keys(opts).length ? opts : undefined,
       );
       setRows(list);
       setSelected((prev) => {
@@ -79,7 +87,13 @@ export default function SandboxesPage() {
     } finally {
       setLoading(false);
     }
-  }, [statusFilter]);
+  }, [statusFilter, projectIdFilter]);
+
+  function applyProjectFilter(next?: string) {
+    const v = (next ?? projectIdInput).trim();
+    setProjectIdInput(v);
+    setProjectIdFilter(v);
+  }
 
   useEffect(() => {
     void load();
@@ -169,7 +183,11 @@ export default function SandboxesPage() {
         <div className="flex flex-wrap gap-2">
           <Button
             variant="secondary"
-            onClick={() => void load()}
+            onClick={() => {
+              applyProjectFilter();
+              // projectId 未变时仍强制重拉
+              if (projectIdInput.trim() === projectIdFilter) void load();
+            }}
             disabled={loading || bulkBusy}
           >
             <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
@@ -203,6 +221,41 @@ export default function SandboxesPage() {
             ))}
           </SelectContent>
         </Select>
+        <Input
+          className="h-9 w-44 font-mono text-xs"
+          placeholder="项目 ID"
+          value={projectIdInput}
+          onChange={(e) => setProjectIdInput(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") {
+              e.preventDefault();
+              applyProjectFilter();
+            }
+          }}
+          aria-label="按项目 ID 筛选"
+        />
+        <Button
+          variant="secondary"
+          size="sm"
+          disabled={loading || bulkBusy}
+          onClick={() => applyProjectFilter()}
+        >
+          筛选项目
+        </Button>
+        {projectIdFilter ? (
+          <Button
+            variant="ghost"
+            size="sm"
+            className="text-muted-foreground"
+            disabled={loading || bulkBusy}
+            onClick={() => {
+              setProjectIdInput("");
+              setProjectIdFilter("");
+            }}
+          >
+            清除项目
+          </Button>
+        ) : null}
         <Button
           variant="destructive"
           size="sm"
@@ -215,6 +268,7 @@ export default function SandboxesPage() {
         </Button>
         <span className="text-xs text-muted-foreground">
           {rows.length} 条
+          {projectIdFilter ? ` · 项目 ${projectIdFilter}` : ""}
           {selected.size > 0 ? ` · 已选 ${selected.size}` : ""}
         </span>
       </div>
@@ -237,7 +291,7 @@ export default function SandboxesPage() {
             </div>
           ) : rows.length === 0 ? (
             <div className="flex flex-col items-center gap-3 py-16 text-sm text-muted-foreground">
-              {statusFilter === "all"
+              {statusFilter === "all" && !projectIdFilter
                 ? "还没有沙箱"
                 : "当前筛选下没有沙箱"}
               <Button asChild>
@@ -326,7 +380,16 @@ export default function SandboxesPage() {
                     <TableCell className="text-xs">
                       {formatDuration(r.durationSec)}
                     </TableCell>
-                    <TableCell className="text-xs">{r.projectId}</TableCell>
+                    <TableCell className="text-xs">
+                      <button
+                        type="button"
+                        className="font-mono hover:text-brand"
+                        title="按此项目筛选"
+                        onClick={() => applyProjectFilter(r.projectId)}
+                      >
+                        {r.projectId}
+                      </button>
+                    </TableCell>
                     <TableCell className="text-right">
                       <Button
                         size="sm"

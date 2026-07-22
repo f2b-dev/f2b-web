@@ -6,6 +6,7 @@
 
 ### Added
 
+- `e2e:bff` 增补 base64 读写/删除、pause/resume
 - Playwright `e2e:ui`：控制台列表徽章诚实 + 创建→详情冒烟（GHA 随 e2e-bff 后跑）
 - pnpm overrides 抬升 `sharp`/`postcss`；`audit:prod` 对 registry.npmjs.org 无 Critical
 - CI：并列 checkout `f2b-spec`（`file:../../../f2b-spec`），修复 install ENOENT

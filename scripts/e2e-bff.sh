@@ -66,6 +66,39 @@ curl -sf -X POST "$BASE/api/sandboxes/$ID/files/rename" \
 READ=$(curl -sf "$BASE/api/sandboxes/$ID/files?path=/tmp/e2e-dir/b.txt")
 node -e "const j=JSON.parse(process.argv[1]); const c=j.file?.content??j.content??''; if(!String(c).includes('e2e-file')) process.exit(9); console.log('  mkdir/rename ok')" "$READ"
 
+
+echo "== files base64 + delete =="
+# "hi" base64 = aGk=
+curl -sf -X POST "$BASE/api/sandboxes/$ID/files" \
+  -H 'content-type: application/json' \
+  -d '{"path":"/tmp/e2e-bin.dat","content":"aGk=","encoding":"base64"}' >/dev/null
+B64=$(curl -sf "$BASE/api/sandboxes/$ID/files?path=/tmp/e2e-bin.dat&encoding=base64")
+node -e '
+  const j=JSON.parse(process.argv[1]);
+  const c=String(j.file?.content??j.content??"");
+  const enc=String(j.file?.encoding??j.encoding??"");
+  let ok=false;
+  if (c==="hi" || c==="aGk=" || c.includes("aGk")) ok=true;
+  try { if (Buffer.from(c,"base64").toString()==="hi") ok=true; } catch {}
+  if (!ok) { console.error(JSON.stringify(j)); process.exit(18); }
+  console.log("  base64 ok enc="+enc+" content="+c.slice(0,24));
+' "$B64"
+# delete: try DELETE with query path
+code=$(curl -s -o /tmp/e2e-del.json -w "%{http_code}" -X DELETE "$BASE/api/sandboxes/$ID/files?path=/tmp/e2e-bin.dat")
+if [[ "$code" != "200" && "$code" != "204" ]]; then
+  # fallback POST body delete if route supports
+  code=$(curl -s -o /tmp/e2e-del.json -w "%{http_code}" -X DELETE "$BASE/api/sandboxes/$ID/files" \
+    -H 'content-type: application/json' -d '{"path":"/tmp/e2e-bin.dat"}')
+fi
+[[ "$code" == "200" || "$code" == "204" ]] || { echo "delete files → $code $(cat /tmp/e2e-del.json 2>/dev/null)"; exit 19; }
+echo "  delete ok"
+
+echo "== pause + resume =="
+PAUSE=$(curl -sf -X POST "$BASE/api/sandboxes/$ID/pause")
+node -e "const j=JSON.parse(process.argv[1]); if(j.sandbox?.status!=='paused') process.exit(20); console.log('  paused')" "$PAUSE"
+RES=$(curl -sf -X POST "$BASE/api/sandboxes/$ID/resume")
+node -e "const j=JSON.parse(process.argv[1]); if(j.sandbox?.status!=='running') process.exit(21); console.log('  resumed')" "$RES"
+
 echo "== patch timeout (keepalive surface) =="
 PATCH=$(curl -sf -X PATCH "$BASE/api/sandboxes/$ID" \
   -H 'content-type: application/json' \

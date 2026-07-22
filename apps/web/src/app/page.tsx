@@ -25,8 +25,8 @@ const FEATURES = [
   },
   {
     icon: Icons.code,
-    title: "E2B 兼容思路",
-    desc: "REST 形态对齐常见沙箱 SDK 习惯，降低从海外方案迁移或双写的成本。",
+    title: "熟悉的沙箱 API 形态",
+    desc: "REST / SDK 对齐常见沙箱开发习惯，降低迁移或双写成本；以本仓契约与 healthz 为准。",
   },
   {
     icon: Icons.dashboard,

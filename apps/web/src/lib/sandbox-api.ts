@@ -301,6 +301,45 @@ export async function deleteFile(
   );
 }
 
+/** 创建目录（默认 recursive） */
+export async function mkdir(
+  id: string,
+  path: string,
+  opts?: { recursive?: boolean },
+): Promise<void> {
+  await parse(
+    await fetch(
+      `/api/sandboxes/${encodeURIComponent(id)}/files/mkdir`,
+      {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          path,
+          recursive: opts?.recursive !== false,
+        }),
+      },
+    ),
+  );
+}
+
+/** 重命名或移动文件/目录 */
+export async function renameFile(
+  id: string,
+  from: string,
+  to: string,
+): Promise<void> {
+  await parse(
+    await fetch(
+      `/api/sandboxes/${encodeURIComponent(id)}/files/rename`,
+      {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ from, to }),
+      },
+    ),
+  );
+}
+
 export function formatDuration(sec: number) {
   if (sec < 60) return `${sec}s`;
   const m = Math.floor(sec / 60);

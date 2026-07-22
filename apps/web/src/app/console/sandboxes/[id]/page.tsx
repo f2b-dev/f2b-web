@@ -10,10 +10,12 @@ import {
   ExternalLink,
   File,
   FolderOpen,
+  FolderPlus,
   Globe,
   HardDrive,
   Info,
   Pause,
+  Pencil,
   Play,
   Plus,
   RefreshCw,
@@ -34,8 +36,10 @@ import {
   getSandbox,
   killSandbox,
   listFiles,
+  mkdir,
   pauseSandbox,
   readFile,
+  renameFile,
   resumeSandbox,
   runCommandStream,
   updateSandbox,
@@ -199,6 +203,55 @@ export default function SandboxDetailPage() {
       setSelectedPath(path);
       setEditor("");
       setEditorDirty(false);
+    } catch (e) {
+      setFilesError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setFilesBusy(false);
+    }
+  }
+
+  async function onMkdir() {
+    const name = newName.trim().replace(/^\/+/, "");
+    if (!name || !sandbox) return;
+    if (name.includes("..") || name.includes("/")) {
+      setFilesError("目录名不能包含 / 或 ..");
+      return;
+    }
+    const path = cwd === "/" ? `/${name}` : `${cwd}/${name}`;
+    setFilesBusy(true);
+    setFilesError(null);
+    try {
+      await mkdir(sandbox.id, path);
+      setNewName("");
+      await loadFiles(cwd);
+    } catch (e) {
+      setFilesError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setFilesBusy(false);
+    }
+  }
+
+  async function onRenameEntry(entry: FileEntry) {
+    if (!sandbox) return;
+    const next = window.prompt(`重命名 ${entry.name}`, entry.name);
+    if (next == null) return;
+    const name = next.trim().replace(/^\/+/, "");
+    if (!name || name === entry.name) return;
+    if (name.includes("..") || name.includes("/")) {
+      setFilesError("新名称不能包含 / 或 ..");
+      return;
+    }
+    const to = cwd === "/" ? `/${name}` : `${cwd}/${name}`;
+    setFilesBusy(true);
+    setFilesError(null);
+    try {
+      await renameFile(sandbox.id, entry.path, to);
+      if (selectedPath === entry.path) {
+        setSelectedPath(to);
+      } else if (selectedPath?.startsWith(entry.path + "/")) {
+        setSelectedPath(selectedPath.replace(entry.path, to));
+      }
+      await loadFiles(cwd);
     } catch (e) {
       setFilesError(e instanceof Error ? e.message : String(e));
     } finally {
@@ -629,6 +682,17 @@ export default function SandboxDetailPage() {
                                 type="button"
                                 size="sm"
                                 variant="ghost"
+                                className="h-8 w-8 shrink-0 p-0 text-muted-foreground"
+                                disabled={filesBusy}
+                                title="重命名"
+                                onClick={() => void onRenameEntry(f)}
+                              >
+                                <Pencil className="h-3.5 w-3.5" />
+                              </Button>
+                              <Button
+                                type="button"
+                                size="sm"
+                                variant="ghost"
                                 className="h-8 w-8 shrink-0 p-0 text-muted-foreground hover:text-destructive"
                                 disabled={filesBusy}
                                 title="删除"
@@ -641,17 +705,26 @@ export default function SandboxDetailPage() {
                         )}
                       </ul>
 
-                      <div className="flex gap-2">
+                      <div className="flex flex-wrap gap-2">
                         <Input
                           value={newName}
                           onChange={(e) => setNewName(e.target.value)}
                           onKeyDown={(e) => {
                             if (e.key === "Enter") void onCreateFile();
                           }}
-                          placeholder="新文件名，如 notes.txt"
+                          placeholder="新文件/目录名"
                           disabled={filesBusy}
-                          className="font-mono text-xs"
+                          className="min-w-[8rem] flex-1 font-mono text-xs"
                         />
+                        <Button
+                          variant="secondary"
+                          disabled={filesBusy || !newName.trim()}
+                          onClick={() => void onMkdir()}
+                          title="新建目录"
+                        >
+                          <FolderPlus className="h-3.5 w-3.5" />
+                          目录
+                        </Button>
                         <Button
                           variant="secondary"
                           disabled={filesBusy || !newName.trim()}

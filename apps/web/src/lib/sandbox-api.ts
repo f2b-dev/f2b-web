@@ -134,15 +134,22 @@ export type CommandStreamEvent =
   | { type: "result"; result: CommandResult }
   | { type: "error"; code: string; message: string };
 
+export type RunCommandOpts = {
+  cwd?: string;
+  timeoutMs?: number;
+  env?: Record<string, string>;
+};
+
 export async function runCommand(
   id: string,
   cmd: string,
+  opts?: RunCommandOpts,
 ): Promise<CommandResult> {
   const data = await parse<{ result: CommandResult }>(
     await fetch(`/api/sandboxes/${encodeURIComponent(id)}/commands`, {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ cmd }),
+      body: JSON.stringify({ cmd, ...opts }),
     }),
   );
   return data.result;
@@ -156,6 +163,7 @@ export async function runCommandStream(
   id: string,
   cmd: string,
   onEvent?: (ev: CommandStreamEvent) => void,
+  opts?: RunCommandOpts,
 ): Promise<CommandResult> {
   const res = await fetch(
     `/api/sandboxes/${encodeURIComponent(id)}/commands/stream`,
@@ -165,7 +173,7 @@ export async function runCommandStream(
         "content-type": "application/json",
         accept: "text/event-stream",
       },
-      body: JSON.stringify({ cmd }),
+      body: JSON.stringify({ cmd, ...opts }),
     },
   );
 

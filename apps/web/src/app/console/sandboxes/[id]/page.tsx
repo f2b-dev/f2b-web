@@ -74,7 +74,11 @@ export default function SandboxDetailPage() {
   const [log, setLog] = useState(
     "$ # connected via BFF → f2b-sandbox (SSE stream)\n",
   );
+  /** 文件浏览器 cwd */
   const [cwd, setCwd] = useState(DEFAULT_DIR);
+  /** 终端命令 cwd（可与文件浏览器分开） */
+  const [termCwd, setTermCwd] = useState(DEFAULT_DIR);
+  const [termEnvText, setTermEnvText] = useState("");
   const [files, setFiles] = useState<FileEntry[]>([]);
   const [filesError, setFilesError] = useState<string | null>(null);
   const [selectedPath, setSelectedPath] = useState<string | null>(null);
@@ -285,23 +289,47 @@ export default function SandboxDetailPage() {
     }
   }
 
+  function parseTermEnv(text: string): Record<string, string> | undefined {
+    const env: Record<string, string> = {};
+    for (const raw of text.split(/\n|,/)) {
+      const line = raw.trim();
+      if (!line) continue;
+      const eq = line.indexOf("=");
+      if (eq <= 0) continue;
+      const k = line.slice(0, eq).trim();
+      const v = line.slice(eq + 1).trim();
+      if (k) env[k] = v;
+    }
+    return Object.keys(env).length ? env : undefined;
+  }
+
   async function runCmd() {
     const line = cmd.trim();
     if (!line || !sandbox) return;
     setBusy(true);
+    const env = parseTermEnv(termEnvText);
+    const runCwd = termCwd.trim() || DEFAULT_DIR;
     setLog((prev) => `${prev}$ ${line}\n`);
     let gotChunk = false;
     try {
-      const result = await runCommandStream(sandbox.id, line, (ev) => {
-        if (ev.type === "stdout" && ev.text) {
-          gotChunk = true;
-          setLog((prev) => `${prev}${ev.text}`);
-        }
-        if (ev.type === "stderr" && ev.text) {
-          gotChunk = true;
-          setLog((prev) => `${prev}${ev.text}`);
-        }
-      });
+      const result = await runCommandStream(
+        sandbox.id,
+        line,
+        (ev) => {
+          if (ev.type === "stdout" && ev.text) {
+            gotChunk = true;
+            setLog((prev) => `${prev}${ev.text}`);
+          }
+          if (ev.type === "stderr" && ev.text) {
+            gotChunk = true;
+            setLog((prev) => `${prev}${ev.text}`);
+          }
+        },
+        {
+          cwd: runCwd,
+          ...(env ? { env } : {}),
+        },
+      );
       if (!gotChunk) {
         const out = (result.stdout || "") + (result.stderr || "");
         if (out) setLog((prev) => `${prev}${out}`);
@@ -584,6 +612,32 @@ export default function SandboxDetailPage() {
               <pre className="max-h-80 overflow-auto rounded-md bg-[#0b1220] p-3 font-mono text-xs leading-relaxed text-emerald-100">
                 {log}
               </pre>
+              <div className="grid gap-2 sm:grid-cols-2">
+                <div className="space-y-1">
+                  <label className="text-xs text-muted-foreground">
+                    工作目录 cwd
+                  </label>
+                  <Input
+                    value={termCwd}
+                    onChange={(e) => setTermCwd(e.target.value)}
+                    placeholder="/home/user"
+                    disabled={busy || sandbox.status !== "running"}
+                    className="font-mono text-xs"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-xs text-muted-foreground">
+                    环境变量（KEY=VAL，逗号或换行分隔）
+                  </label>
+                  <Input
+                    value={termEnvText}
+                    onChange={(e) => setTermEnvText(e.target.value)}
+                    placeholder="FOO=bar,BAZ=1"
+                    disabled={busy || sandbox.status !== "running"}
+                    className="font-mono text-xs"
+                  />
+                </div>
+              </div>
               <div className="flex gap-2">
                 <Input
                   value={cmd}

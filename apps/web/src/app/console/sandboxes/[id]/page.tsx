@@ -866,22 +866,24 @@ export default function SandboxDetailPage() {
               <div className="grid gap-3 sm:grid-cols-2">
                 <Card>
                   <CardContent className="space-y-3 pt-4">
-                    <div className="text-sm font-medium">存活超时</div>
+                    <div className="text-sm font-medium">空闲超时（滑动）</div>
                     <p className="text-xs text-muted-foreground">
-                      从{" "}
-                      <code className="text-[11px]">
-                        {sandbox.startedAt ?? sandbox.createdAt}
-                      </code>{" "}
-                      起算；当前{" "}
+                      窗口{" "}
                       {sandbox.timeoutMs == null
                         ? "未设置"
                         : `${Math.round(sandbox.timeoutMs / 60_000)} 分钟（${sandbox.timeoutMs} ms）`}
-                      。
+                      ；自最近活动{" "}
+                      <code className="text-[11px]">
+                        {sandbox.lastActiveAt ??
+                          sandbox.startedAt ??
+                          sandbox.createdAt}
+                      </code>{" "}
+                      起算。命令与文件操作会自动保活。
                     </p>
                     <div className="flex flex-wrap items-end gap-2">
                       <div className="space-y-1">
                         <label className="text-xs text-muted-foreground">
-                          延期至（分钟）
+                          空闲窗口（分钟）
                         </label>
                         <Input
                           className="w-28"

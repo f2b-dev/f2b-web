@@ -18,6 +18,8 @@ export type ApiSandbox = {
   createdAt: string;
   updatedAt: string;
   startedAt: string | null;
+  /** 最近活动时间；空闲超时锚点 */
+  lastActiveAt?: string | null;
   finishedAt: string | null;
   durationSec: number;
 };

@@ -265,8 +265,10 @@ export async function listFiles(
 export async function readFile(
   id: string,
   path: string,
+  opts?: { encoding?: "utf8" | "base64" },
 ): Promise<{ content: string; encoding: string }> {
-  const q = new URLSearchParams({ path, encoding: "utf8" });
+  const encoding = opts?.encoding ?? "utf8";
+  const q = new URLSearchParams({ path, encoding });
   const data = await parse<{
     file: { content: string; encoding: string; path?: string };
   }>(
@@ -277,7 +279,7 @@ export async function readFile(
   );
   return {
     content: data.file?.content ?? "",
-    encoding: data.file?.encoding ?? "utf8",
+    encoding: data.file?.encoding ?? encoding,
   };
 }
 
@@ -285,12 +287,17 @@ export async function writeFile(
   id: string,
   path: string,
   content: string,
+  opts?: { encoding?: "utf8" | "base64" },
 ): Promise<void> {
   await parse(
     await fetch(`/api/sandboxes/${encodeURIComponent(id)}/files`, {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ path, content, encoding: "utf8" }),
+      body: JSON.stringify({
+        path,
+        content,
+        encoding: opts?.encoding ?? "utf8",
+      }),
     }),
   );
 }

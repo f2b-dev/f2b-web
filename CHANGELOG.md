@@ -4,6 +4,10 @@
 
 ## [Unreleased]
 
+### Added
+
+- `e2e:bff` 覆盖 cwd / command timeoutMs / 文件 mkdir+rename / PATCH timeoutMs
+
 ### Changed
 
 - 控制台顶栏徽章按 `/healthz` 的 `backend` 动态展示（如 `fake · BFF → sandbox`）

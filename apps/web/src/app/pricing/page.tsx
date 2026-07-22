@@ -5,43 +5,56 @@ import { Icon, Icons } from "@/components/icons";
 
 export const metadata: Metadata = {
   title: "定价",
-  description: "灵境云定价：按沙箱时长与规格计费，开发者免费额度起步。",
+  description:
+    "灵境云定价示意：当前阶段用量可观测；完整账单扣款后置。开发者可本地 / 单机试用。",
 };
 
 const PLANS = [
   {
     name: "Developer",
     price: "¥0",
-    period: "/ 月起",
-    desc: "个人试用与本地联调",
-    features: ["每月 20 沙箱小时", "2 并发沙箱", "社区模板", "API Key × 2", "社区支持"],
-    cta: "免费开始",
+    period: "/ 试用",
+    desc: "个人联调与演示（当前主路径）",
+    features: [
+      "控制台 + BFF + SDK / MCP",
+      "Fake 数据面完整生命周期",
+      "用量聚合（沙箱时 / 命令）",
+      "API Key（明文仅创建一次）",
+      "单机并发硬顶可配置",
+    ],
+    cta: "打开控制台",
     href: "/console",
     featured: false,
   },
   {
     name: "Team",
-    price: "按量",
-    period: " · 预付费",
-    desc: "团队 Agent 与流水线",
+    price: "规划中",
+    period: "",
+    desc: "团队与流水线（未开放扣款）",
     features: [
-      "按 vCPU·时计费",
-      "20 并发沙箱",
-      "私有模板",
-      "项目与角色",
-      "工单支持",
+      "按沙箱时长计量（示意）",
+      "更高并发与项目维度",
+      "预览隧道 / 模板目录",
+      "工单支持（规划）",
+      "非当前可下单档",
     ],
-    cta: "联系开通",
-    href: "/console",
+    cta: "查看用量形态",
+    href: "/console/usage",
     featured: true,
   },
   {
     name: "Enterprise",
     price: "定制",
     period: "",
-    desc: "专有云 / 自托管",
-    features: ["专属集群", "VPC 与审计", "SLA", "合规支持", "Cube 联合部署"],
-    cta: "预约沟通",
+    desc: "专有部署与合规（洽谈）",
+    features: [
+      "单机 / 私有化 all-in-one",
+      "VPC 与审计（规划）",
+      "容量分档与 SLA 协商",
+      "不承诺未交付的多节点集群",
+      "预约沟通",
+    ],
+    cta: "阅读架构文档",
     href: "/docs",
     featured: false,
   },
@@ -53,15 +66,30 @@ export default function PricingPage() {
       <section className="section" style={{ paddingTop: 72 }}>
         <div className="section-head">
           <div className="section-label">Pricing</div>
-          <h2>简单透明，按执行付费</h2>
-          <p>控制面常驻免费；沙箱按运行时长与规格计量。以下为 V1 示意价，上线前可调整。</p>
+          <h2>先能力后账单</h2>
+          <p>
+            当前产品以<strong>可验收能力</strong>为主：创建 / 命令 / 文件 / 模板 /
+            用量 / 隧道。完整多云扣款与账单
+            <strong>未接入</strong>；下表为档位示意，避免超卖未实现能力。
+          </p>
         </div>
         <div className="pricing-grid">
           {PLANS.map((p) => (
-            <article key={p.name} className={`price-card ${p.featured ? "featured" : ""}`}>
+            <article
+              key={p.name}
+              className={`price-card ${p.featured ? "featured" : ""}`}
+            >
               <div>
                 <h3>{p.name}</h3>
-                <p style={{ margin: "6px 0 0", color: "var(--muted)", fontSize: 13 }}>{p.desc}</p>
+                <p
+                  style={{
+                    margin: "6px 0 0",
+                    color: "var(--muted)",
+                    fontSize: 13,
+                  }}
+                >
+                  {p.desc}
+                </p>
               </div>
               <div className="price">
                 {p.price}
@@ -69,7 +97,10 @@ export default function PricingPage() {
               </div>
               <ul>
                 {p.features.map((f) => (
-                  <li key={f} style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                  <li
+                    key={f}
+                    style={{ display: "flex", alignItems: "center", gap: 8 }}
+                  >
                     <Icon icon={Icons.check} size={14} />
                     <span>{f}</span>
                   </li>
@@ -86,7 +117,8 @@ export default function PricingPage() {
           ))}
         </div>
         <p style={{ marginTop: 28, color: "var(--muted)", fontSize: 13 }}>
-          * 示意定价。真实账单将基于 UsageEvent（时长、规格）聚合；控制台用量页可预览计量形态。
+          * 控制台「用量」页展示真实聚合；扣款 / 发票后置。并发上限见单机{" "}
+          <code>F2B_MAX_CONCURRENT_SANDBOXES</code> 与容量文档，非无限弹性。
         </p>
       </section>
     </MarketingShell>

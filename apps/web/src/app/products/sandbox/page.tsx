@@ -13,32 +13,32 @@ const CAPABILITIES = [
   {
     icon: Icons.zap,
     title: "生命周期",
-    desc: "Create / List / Connect / Kill；Pause/Resume 按集群能力接入",
+    desc: "Create / List / Kill；Pause/Resume 已支持（视数据面能力）",
   },
   {
     icon: Icons.terminal,
     title: "命令执行",
-    desc: "Shell 与流式 stdout/stderr，适合 Agent tool-use 闭环",
+    desc: "Shell 与 SSE 流式 stdout/stderr；可选 cwd / env / timeoutMs",
   },
   {
     icon: Icons.folder,
     title: "文件系统",
-    desc: "读写、上传下载，产物可回流到控制面存储",
+    desc: "读写（utf8/base64）、列目录、mkdir/rename/delete",
   },
   {
     icon: Icons.template,
     title: "模板",
-    desc: "Base / Code Interpreter 预置，后续支持自定义构建",
+    desc: "预置模板目录；自定义构建流水线后置",
   },
   {
     icon: Icons.network,
-    title: "网络",
-    desc: "allowInternetAccess 开关；细粒度白名单在路线图",
+    title: "网络与预览",
+    desc: "allowInternetAccess 开关；控制台隧道预览（BFF）",
   },
   {
     icon: Icons.shield,
     title: "隔离",
-    desc: "独立内核级隔离，非共享宿主机随意跑；任务之间互不干扰",
+    desc: "独立执行环境；控制面与数据面分离，浏览器不持管理密钥",
   },
 ] as const;
 
@@ -74,8 +74,8 @@ export default function SandboxProductPage() {
               架构位置
             </h3>
             <p style={{ color: "var(--text-secondary)", lineHeight: 1.7 }}>
-              浏览器与 SDK 只接触灵境云 Control API（JWT / API Key）。
-              服务端持有 Cube 凭证，转发到 CubeAPI。流式日志与命令输出走 SSE/WS。
+              浏览器与 SDK 只接触灵境云控制面（JWT / API Key 或同源 BFF）。
+              数据面凭证仅服务端持有。命令流式输出走 SSE；用量与 API Key 落控制面。
             </p>
             <pre
               className="hero-code"
@@ -85,8 +85,8 @@ export default function SandboxProductPage() {
                 border: "1px solid #2b303b",
                 background: "var(--code-bg)",
               }}
-            >{`Client  →  灵境云 Control API  →  CubeAPI
-                    │ 鉴权/配额/审计
+            >{`Client  →  灵境云 Control / BFF  →  沙箱服务
+                    │ 鉴权 / 配额 / 审计
                     └─ 用量落库 · 模板元数据`}</pre>
           </div>
           <div className="card card-pad">

@@ -368,3 +368,55 @@ export function formatDuration(sec: number) {
   const h = Math.floor(m / 60);
   return `${h}h ${m % 60}m`;
 }
+
+/** 相对时间：刚刚 / N 分钟前 / …；非法则回落本地时间串 */
+export function formatRelativeTime(
+  iso: string | null | undefined,
+  nowMs = Date.now(),
+): string {
+  if (!iso) return "—";
+  const t = Date.parse(iso);
+  if (Number.isNaN(t)) return iso;
+  const diff = nowMs - t;
+  if (diff < 0) return "刚刚";
+  const sec = Math.floor(diff / 1000);
+  if (sec < 10) return "刚刚";
+  if (sec < 60) return `${sec} 秒前`;
+  const min = Math.floor(sec / 60);
+  if (min < 60) return `${min} 分钟前`;
+  const hr = Math.floor(min / 60);
+  if (hr < 48) return `${hr} 小时前`;
+  const day = Math.floor(hr / 24);
+  if (day < 14) return `${day} 天前`;
+  return new Date(t).toLocaleString();
+}
+
+/**
+ * 空闲超时剩余：锚点 lastActiveAt（回落 started/created）+ timeoutMs。
+ * 无超时返回 null；已过期返回 "已到期"。
+ */
+export function formatIdleRemaining(
+  sandbox: {
+    timeoutMs?: number | null;
+    lastActiveAt?: string | null;
+    startedAt?: string | null;
+    createdAt: string;
+  },
+  nowMs = Date.now(),
+): string | null {
+  if (sandbox.timeoutMs == null || sandbox.timeoutMs <= 0) return null;
+  const anchorIso =
+    sandbox.lastActiveAt ?? sandbox.startedAt ?? sandbox.createdAt;
+  const anchor = Date.parse(anchorIso);
+  if (Number.isNaN(anchor)) return null;
+  const left = anchor + sandbox.timeoutMs - nowMs;
+  if (left <= 0) return "已到期";
+  const sec = Math.ceil(left / 1000);
+  if (sec < 60) return `${sec} 秒`;
+  const min = Math.floor(sec / 60);
+  const s = sec % 60;
+  if (min < 60) return s > 0 ? `${min} 分 ${s} 秒` : `${min} 分钟`;
+  const hr = Math.floor(min / 60);
+  const m = min % 60;
+  return m > 0 ? `${hr} 小时 ${m} 分` : `${hr} 小时`;
+}

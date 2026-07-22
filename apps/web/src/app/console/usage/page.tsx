@@ -14,6 +14,7 @@ import {
   TableRow,
 } from "@f2b/ui";
 import { proxyToSandbox } from "@f2b/bff-core";
+import { ConsoleEmpty } from "@/components/console-empty";
 
 export const dynamic = "force-dynamic";
 
@@ -123,7 +124,12 @@ export default async function UsagePage() {
         </CardHeader>
         <CardContent>
           {byDay.length === 0 ? (
-            <p className="text-sm text-muted-foreground">暂无用量数据</p>
+            <ConsoleEmpty
+              icon={ChartColumn}
+              className="py-10"
+              title="暂无用量数据"
+              description="创建并销毁沙箱、执行命令后，会按 UTC 日聚合出现在此。"
+            />
           ) : (
             <div className="flex h-[180px] items-end gap-2.5">
               {byDay.map((u) => (
@@ -163,8 +169,13 @@ export default async function UsagePage() {
             <TableBody>
               {byDay.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={3} className="text-muted-foreground">
-                    暂无数据；创建并销毁沙箱、执行命令后会出现在此。
+                  <TableCell colSpan={3} className="p-0">
+                    <ConsoleEmpty
+                      icon={ChartColumn}
+                      className="py-10"
+                      title="表格暂无行"
+                      description="有 lifetime / command 记账后按日列出。"
+                    />
                   </TableCell>
                 </TableRow>
               ) : (

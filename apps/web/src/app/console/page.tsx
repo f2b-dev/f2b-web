@@ -23,6 +23,7 @@ import { SandboxStatusTag } from "@/lib/status";
 import { formatDuration, type ApiSandbox } from "@/lib/sandbox-api";
 import type { UsageSummary } from "@/lib/usage-api";
 import type { SandboxHealth } from "@/lib/health-api";
+import { ConsoleEmpty } from "@/components/console-empty";
 
 export const dynamic = "force-dynamic";
 
@@ -255,15 +256,20 @@ export default async function ConsoleDashboardPage() {
           </CardHeader>
           <CardContent className="p-0">
             {recent.length === 0 ? (
-              <div className="px-4 py-10 text-center text-sm text-muted-foreground">
-                暂无沙箱。
-                <Link
-                  href="/console/sandboxes/new"
-                  className="ml-1 text-brand hover:underline"
-                >
-                  创建第一个
-                </Link>
-              </div>
+              <ConsoleEmpty
+                icon={Box}
+                className="py-10"
+                title="暂无沙箱"
+                description="创建后会出现在最近列表。"
+                action={
+                  <Button asChild size="sm">
+                    <Link href="/console/sandboxes/new">
+                      <Plus className="h-4 w-4" />
+                      创建第一个
+                    </Link>
+                  </Button>
+                }
+              />
             ) : (
               <Table>
                 <TableHeader>

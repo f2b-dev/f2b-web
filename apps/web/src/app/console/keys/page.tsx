@@ -10,6 +10,8 @@ import {
   Button,
   Card,
   CardContent,
+  Input,
+  Label,
   Table,
   TableBody,
   TableCell,
@@ -23,6 +25,8 @@ import {
   revokeKey,
   type ApiKeyMeta,
 } from "@/lib/keys-api";
+import { ConsoleEmpty, ConsoleLoading } from "@/components/console-empty";
+import { formatRelativeTime } from "@/lib/sandbox-api";
 
 export default function ApiKeysPage() {
   const [keys, setKeys] = useState<ApiKeyMeta[]>([]);
@@ -30,6 +34,7 @@ export default function ApiKeysPage() {
   const [error, setError] = useState<string | null>(null);
   const [created, setCreated] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [nameInput, setNameInput] = useState("");
 
   const refresh = useCallback(async () => {
     setLoading(true);
@@ -52,9 +57,13 @@ export default function ApiKeysPage() {
     setBusy(true);
     setError(null);
     try {
-      const name = `key-${keys.length + 1}`;
+      const trimmed = nameInput.trim();
+      const name =
+        trimmed ||
+        `key-${new Date().toISOString().slice(0, 10)}-${keys.length + 1}`;
       const { key, secret } = await createKey(name);
       setCreated(secret);
+      setNameInput("");
       setKeys((prev) => [key, ...prev.filter((k) => k.id !== key.id)]);
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
@@ -86,11 +95,33 @@ export default function ApiKeysPage() {
             对接 f2b-sandbox · 服务端只存 hash · 明文仅创建时展示一次
           </p>
         </div>
-        <Button onClick={() => void onCreate()} disabled={busy || loading}>
-          <Plus className="h-4 w-4" />
-          创建密钥
-        </Button>
       </div>
+
+      <Card>
+        <CardContent className="flex flex-wrap items-end gap-3 p-4">
+          <div className="min-w-[12rem] flex-1 space-y-1.5">
+            <Label htmlFor="key-name">密钥名称</Label>
+            <Input
+              id="key-name"
+              placeholder="例如 ci-bot、本地调试"
+              value={nameInput}
+              maxLength={64}
+              onChange={(e) => setNameInput(e.target.value)}
+              disabled={busy || loading}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") void onCreate();
+              }}
+            />
+            <p className="text-[11px] text-muted-foreground">
+              留空则自动生成名称；便于区分环境与机器人。
+            </p>
+          </div>
+          <Button onClick={() => void onCreate()} disabled={busy || loading}>
+            <Plus className="h-4 w-4" />
+            创建密钥
+          </Button>
+        </CardContent>
+      </Card>
 
       {error && (
         <Alert variant="destructive">
@@ -98,8 +129,7 @@ export default function ApiKeysPage() {
           <AlertDescription>
             {error}
             <span className="mt-1 block text-xs opacity-90">
-              若 sandbox 开启了{" "}
-              <code>F2B_AUTH_MODE=api_key</code>，请在 web 配置{" "}
+              若 sandbox 开启了 <code>F2B_AUTH_MODE=api_key</code>，请在 web 配置{" "}
               <code>F2B_SANDBOX_ADMIN_TOKEN</code>（与 sandbox 的{" "}
               <code>F2B_ADMIN_TOKEN</code> 一致）。
             </span>
@@ -121,13 +151,23 @@ export default function ApiKeysPage() {
       <Card>
         <CardContent className="p-0">
           {loading ? (
-            <div className="px-4 py-10 text-center text-sm text-muted-foreground">
-              加载中…
-            </div>
+            <ConsoleLoading rows={3} />
           ) : keys.length === 0 ? (
-            <div className="px-4 py-10 text-center text-sm text-muted-foreground">
-              暂无密钥。点击「创建密钥」生成（需 sandbox 可达）。
-            </div>
+            <ConsoleEmpty
+              icon={KeyRound}
+              title="还没有 API 密钥"
+              description="填写名称后点击「创建密钥」。明文 secret 仅创建响应展示一次。"
+              action={
+                <Button
+                  size="sm"
+                  disabled={busy}
+                  onClick={() => void onCreate()}
+                >
+                  <Plus className="h-4 w-4" />
+                  创建密钥
+                </Button>
+              }
+            />
           ) : (
             <Table>
               <TableHeader>
@@ -156,12 +196,18 @@ export default function ApiKeysPage() {
                       <Badge variant="outline">{k.projectId}</Badge>
                     </TableCell>
                     <TableCell className="font-mono text-xs">
-                      {new Date(k.createdAt).toLocaleString()}
+                      <span title={new Date(k.createdAt).toLocaleString()}>
+                        {formatRelativeTime(k.createdAt)}
+                      </span>
                     </TableCell>
                     <TableCell className="font-mono text-xs">
-                      {k.lastUsedAt
-                        ? new Date(k.lastUsedAt).toLocaleString()
-                        : "—"}
+                      {k.lastUsedAt ? (
+                        <span title={new Date(k.lastUsedAt).toLocaleString()}>
+                          {formatRelativeTime(k.lastUsedAt)}
+                        </span>
+                      ) : (
+                        "—"
+                      )}
                     </TableCell>
                     <TableCell>
                       <Button

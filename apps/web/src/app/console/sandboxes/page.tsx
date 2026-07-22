@@ -27,6 +27,7 @@ import {
   type ApiSandbox,
 } from "@/lib/sandbox-api";
 import { SandboxStatusTag } from "@/lib/status";
+import { ConsoleEmpty, ConsoleLoading } from "@/components/console-empty";
 import { Alert, AlertDescription } from "@f2b/ui";
 import { Input } from "@f2b/ui";
 import {
@@ -286,21 +287,29 @@ export default function SandboxesPage() {
       <Card>
         <CardContent className="p-0">
           {loading && rows.length === 0 ? (
-            <div className="py-16 text-center text-sm text-muted-foreground">
-              加载中…
-            </div>
+            <ConsoleLoading rows={5} />
           ) : rows.length === 0 ? (
-            <div className="flex flex-col items-center gap-3 py-16 text-sm text-muted-foreground">
-              {statusFilter === "all" && !projectIdFilter
-                ? "还没有沙箱"
-                : "当前筛选下没有沙箱"}
-              <Button asChild>
-                <Link href="/console/sandboxes/new">
-                  <Plus className="h-4 w-4" />
-                  创建沙箱
-                </Link>
-              </Button>
-            </div>
+            <ConsoleEmpty
+              icon={AppWindow}
+              title={
+                statusFilter === "all" && !projectIdFilter
+                  ? "还没有沙箱"
+                  : "当前筛选下没有沙箱"
+              }
+              description={
+                statusFilter === "all" && !projectIdFilter
+                  ? "创建后可在此管理生命周期、终端与文件。"
+                  : "试试切换状态或清除项目筛选。"
+              }
+              action={
+                <Button asChild>
+                  <Link href="/console/sandboxes/new">
+                    <Plus className="h-4 w-4" />
+                    创建沙箱
+                  </Link>
+                </Button>
+              }
+            />
           ) : (
             <Table>
               <TableHeader>

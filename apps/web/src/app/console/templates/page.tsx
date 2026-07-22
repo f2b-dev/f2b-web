@@ -13,6 +13,7 @@ import {
 } from "@f2b/ui";
 import { proxyToSandbox } from "@f2b/bff-core";
 import type { TemplateRef } from "@/lib/templates-api";
+import { ConsoleEmpty } from "@/components/console-empty";
 
 export const dynamic = "force-dynamic";
 
@@ -68,9 +69,20 @@ export default async function TemplatesPage() {
       ) : null}
 
       {templates.length === 0 && !error ? (
-        <p className="py-10 text-center text-sm text-muted-foreground">
-          暂无模板。
-        </p>
+        <Card>
+          <CardContent className="p-0">
+            <ConsoleEmpty
+              icon={LayoutTemplate}
+              title="暂无模板"
+              description="上游 GET /v1/templates 未返回预置项。请确认 f2b-sandbox 已启动。"
+              action={
+                <Button asChild size="sm">
+                  <Link href="/console/sandboxes/new">仍去创建沙箱</Link>
+                </Button>
+              }
+            />
+          </CardContent>
+        </Card>
       ) : (
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
           {templates.map((t) => (

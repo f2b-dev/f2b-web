@@ -35,6 +35,8 @@ import { Alert, AlertDescription } from "@f2b/ui";
 import {
   deleteFile,
   formatDuration,
+  formatIdleRemaining,
+  formatRelativeTime,
   getSandbox,
   killSandbox,
   listFiles,
@@ -49,6 +51,7 @@ import {
   type ApiSandbox,
   type FileEntry,
 } from "@/lib/sandbox-api";
+import { ConsoleLoading } from "@/components/console-empty";
 import {
   closeTunnel,
   createTunnel,
@@ -151,6 +154,13 @@ export default function SandboxDetailPage() {
   const [metaError, setMetaError] = useState<string | null>(null);
   const [metaKey, setMetaKey] = useState("");
   const [metaVal, setMetaVal] = useState("");
+  /** 相对时间 / 空闲倒计时刷新锚点 */
+  const [nowMs, setNowMs] = useState(() => Date.now());
+
+  useEffect(() => {
+    const t = setInterval(() => setNowMs(Date.now()), 1000);
+    return () => clearInterval(t);
+  }, []);
 
   const loadTunnels = useCallback(async (sandboxId: string) => {
     setTunnelsBusy(true);
@@ -622,14 +632,13 @@ export default function SandboxDetailPage() {
   }
 
   if (!sandbox) {
-    return (
-      <div className="py-20 text-center text-sm text-muted-foreground">
-        加载中…
-      </div>
-    );
+    return <ConsoleLoading rows={6} className="py-16" />;
   }
 
   const filesInteractive = sandbox.status === "running";
+  const lastActiveIso =
+    sandbox.lastActiveAt ?? sandbox.startedAt ?? sandbox.createdAt;
+  const idleLeft = formatIdleRemaining(sandbox, nowMs);
 
   return (
     <div className="space-y-4">
@@ -687,7 +696,7 @@ export default function SandboxDetailPage() {
         </Alert>
       ) : null}
 
-      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
         <Stat icon={Cpu} title="规格" value={sandbox.cpu} suffix={sandbox.memory} />
         <Stat
           icon={Globe}
@@ -698,6 +707,18 @@ export default function SandboxDetailPage() {
           icon={Clock3}
           title="已运行"
           value={formatDuration(sandbox.durationSec)}
+        />
+        <Stat
+          icon={Clock3}
+          title="最近活动"
+          value={formatRelativeTime(lastActiveIso, nowMs)}
+          suffix={
+            idleLeft
+              ? idleLeft === "已到期"
+                ? "空闲已到期"
+                : `剩余 ${idleLeft}`
+              : undefined
+          }
         />
         <Stat icon={HardDrive} title="项目" value={sandbox.projectId} />
       </div>
@@ -1160,19 +1181,50 @@ export default function SandboxDetailPage() {
                 <Card>
                   <CardContent className="space-y-3 pt-4">
                     <div className="text-sm font-medium">空闲超时（滑动）</div>
-                    <p className="text-xs text-muted-foreground">
-                      窗口{" "}
-                      {sandbox.timeoutMs == null
-                        ? "未设置"
-                        : `${Math.round(sandbox.timeoutMs / 60_000)} 分钟（${sandbox.timeoutMs} ms）`}
-                      ；自最近活动{" "}
-                      <code className="text-[11px]">
-                        {sandbox.lastActiveAt ??
-                          sandbox.startedAt ??
-                          sandbox.createdAt}
-                      </code>{" "}
-                      起算。命令与文件操作会自动保活。
-                    </p>
+                    <div className="space-y-1 text-xs text-muted-foreground">
+                      <p>
+                        窗口{" "}
+                        <span className="font-medium text-foreground">
+                          {sandbox.timeoutMs == null
+                            ? "未设置"
+                            : `${Math.round(sandbox.timeoutMs / 60_000)} 分钟`}
+                        </span>
+                        {sandbox.timeoutMs != null ? (
+                          <span className="font-mono">
+                            {" "}
+                            （{sandbox.timeoutMs} ms）
+                          </span>
+                        ) : null}
+                      </p>
+                      <p>
+                        最近活动{" "}
+                        <span
+                          className="font-medium text-foreground"
+                          title={lastActiveIso}
+                        >
+                          {formatRelativeTime(lastActiveIso, nowMs)}
+                        </span>
+                        <span className="ml-1 font-mono text-[11px] opacity-80">
+                          {lastActiveIso}
+                        </span>
+                      </p>
+                      {idleLeft ? (
+                        <p
+                          className={
+                            idleLeft === "已到期"
+                              ? "font-medium text-amber-700"
+                              : "font-medium text-foreground"
+                          }
+                        >
+                          {idleLeft === "已到期"
+                            ? "空闲已到期，reaper 将回收"
+                            : `距回收约 ${idleLeft}`}
+                        </p>
+                      ) : (
+                        <p>未设置空闲窗口时不会因超时自动销毁。</p>
+                      )}
+                      <p>命令与文件操作成功后会自动保活（刷新 lastActiveAt）。</p>
+                    </div>
                     <div className="flex flex-wrap items-end gap-2">
                       <div className="space-y-1">
                         <label className="text-xs text-muted-foreground">

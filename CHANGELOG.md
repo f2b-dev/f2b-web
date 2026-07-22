@@ -6,6 +6,7 @@
 
 ### Added
 
+- pnpm overrides 抬升 `sharp`/`postcss`；`audit:prod` 对 registry.npmjs.org 无 Critical
 - CI：并列 checkout `f2b-spec`（`file:../../../f2b-spec`），修复 install ENOENT
 - GHA `e2e-bff` job：起 fake sandbox + tunnel + web，跑全路径 `e2e:bff`
 - `e2e:bff` 覆盖模板/用量/密钥/隧道全路径（create→list→revoke/close）

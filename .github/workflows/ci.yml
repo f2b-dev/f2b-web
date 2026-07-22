@@ -17,12 +17,12 @@ jobs:
     steps:
       # monorepo 用 file:../../../f2b-spec → 工作区根需并列 f2b-web + f2b-spec
       - name: Checkout f2b-web
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           path: f2b-web
 
       - name: Checkout f2b-spec
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           repository: f2b-dev/f2b-spec
           path: f2b-spec
@@ -58,24 +58,24 @@ jobs:
     timeout-minutes: 25
     steps:
       - name: Checkout f2b-web
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           path: f2b-web
 
       - name: Checkout f2b-spec
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           repository: f2b-dev/f2b-spec
           path: f2b-spec
 
       - name: Checkout f2b-sandbox
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           repository: f2b-dev/f2b-sandbox
           path: f2b-sandbox
 
       - name: Checkout f2b-tunnel
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           repository: f2b-dev/f2b-tunnel
           path: f2b-tunnel

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# 浏览器同源路径 E2E：列表 → 创建 → 命令/SSE/cwd/timeout → 文件 mkdir/rename → 销毁
+# 浏览器同源路径 E2E：沙箱全路径 + 模板/用量/密钥/隧道 → 销毁
 set -euo pipefail
 BASE="${F2B_WEB_URL:-http://127.0.0.1:13200}"
 NAME="e2e-$(date +%s | tail -c 6)"
@@ -81,6 +81,34 @@ echo "$HTML" | node -e '
   if (t.length < 200) process.exit(11);
   console.log("  detail html ok len="+t.length);
 '
+
+echo "== templates =="
+TEMPL=$(curl -sf "$BASE/api/templates")
+node -e "const j=JSON.parse(process.argv[1]); if(!Array.isArray(j.templates)||!j.templates.some(x=>x.id==='base')) process.exit(12); console.log('  templates ok n='+j.templates.length)" "$TEMPL"
+
+echo "== usage =="
+USAGE=$(curl -sf "$BASE/api/usage")
+node -e "const j=JSON.parse(process.argv[1]); if(!j.usage||typeof j.usage.totalCommands!=='number') process.exit(13); console.log('  usage ok commands='+j.usage.totalCommands)" "$USAGE"
+
+echo "== keys create+list+revoke =="
+KEY_NAME="e2e-key-$(date +%s | tail -c 5)"
+KCREATE=$(curl -sf -X POST "$BASE/api/keys" -H 'content-type: application/json' -d "{\"name\":\"$KEY_NAME\"}")
+KID=$(node -e "const j=JSON.parse(process.argv[1]); if(!j.key?.id||!j.secret||!String(j.secret).startsWith('sk_')) process.exit(14); console.log(j.key.id)" "$KCREATE")
+echo "  key id=$KID"
+KLIST=$(curl -sf "$BASE/api/keys")
+node -e "const j=JSON.parse(process.argv[1]); if(!j.keys?.some(k=>k.id===process.argv[2])) process.exit(15); console.log('  keys list ok')" "$KLIST" "$KID"
+curl -sf -X DELETE "$BASE/api/keys/$KID" >/dev/null
+echo "  key revoked"
+
+echo "== tunnels create+list+close =="
+TCREATE=$(curl -sf -X POST "$BASE/api/tunnels" -H 'content-type: application/json' \
+  -d "{\"sandboxId\":\"$ID\",\"port\":3999,\"targetUrl\":\"http://127.0.0.1:3999\"}")
+TID=$(node -e "const j=JSON.parse(process.argv[1]); if(!j.tunnel?.id||!j.tunnel?.publicUrl) process.exit(16); console.log(j.tunnel.id)" "$TCREATE")
+echo "  tunnel id=$TID"
+TLIST=$(curl -sf "$BASE/api/tunnels")
+node -e "const j=JSON.parse(process.argv[1]); if(!j.tunnels?.some(t=>t.id===process.argv[2])) process.exit(17); console.log('  tunnels list ok')" "$TLIST" "$TID"
+curl -sf -X DELETE "$BASE/api/tunnels/$TID" >/dev/null
+echo "  tunnel closed"
 
 echo "== kill =="
 KILL=$(curl -sf -X DELETE "$BASE/api/sandboxes/$ID")

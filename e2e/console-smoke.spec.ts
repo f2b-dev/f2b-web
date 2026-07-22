@@ -56,4 +56,47 @@ test.describe("console smoke", () => {
     const res = await request.delete(`/api/sandboxes/${id}`);
     expect([200, 204].includes(res.status()) || res.ok()).toBeTruthy();
   });
+
+  test("列表可按 projectId 筛选", async ({ page, request }) => {
+    const pid = `pw-proj-${Date.now().toString(36).slice(-5)}`;
+    const name = `pw-f-${Date.now().toString(36).slice(-5)}`;
+    const create = await request.post("/api/sandboxes", {
+      data: {
+        name,
+        template: "base",
+        timeoutMs: 120_000,
+        projectId: pid,
+      },
+    });
+    expect(create.ok()).toBeTruthy();
+    const body = (await create.json()) as { sandbox?: { id?: string } };
+    const id = body.sandbox?.id;
+    expect(id).toBeTruthy();
+
+    try {
+      await page.goto("/console/sandboxes");
+      await expect(page.getByRole("heading", { name: /沙箱/ })).toBeVisible({
+        timeout: 30_000,
+      });
+      const projectInput = page.getByLabel("按项目 ID 筛选");
+      await projectInput.fill(pid);
+      await page.getByRole("button", { name: "筛选项目" }).click();
+      await expect(page.getByText(`· 项目 ${pid}`)).toBeVisible({
+        timeout: 15_000,
+      });
+      // 列表应出现该实例名或 id
+      await expect(
+        page.getByText(name).or(page.getByText(id!)).first(),
+      ).toBeVisible({ timeout: 15_000 });
+
+      // 切到「已销毁」应看不到存活实例
+      await page.getByRole("combobox").first().click();
+      await page.getByRole("option", { name: "已销毁" }).click();
+      await expect
+        .poll(async () => page.getByText(name).count(), { timeout: 15_000 })
+        .toBe(0);
+    } finally {
+      await request.delete(`/api/sandboxes/${id}`);
+    }
+  });
 });

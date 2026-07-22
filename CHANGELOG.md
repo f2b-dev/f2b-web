@@ -6,6 +6,7 @@
 
 ### Added
 
+- Playwright `e2e:ui` 增补列表 `projectId` 筛选（含状态「已销毁」排除存活）
 - `e2e:bff` 列表 `projectId` / `status` 筛选断言（含 running 命中、killed 排除存活）
 - `e2e:bff` 增补 base64 读写/删除、pause/resume
 - Playwright `e2e:ui`：控制台列表徽章诚实 + 创建→详情冒烟（GHA 随 e2e-bff 后跑）

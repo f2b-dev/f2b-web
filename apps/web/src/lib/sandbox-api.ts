@@ -278,6 +278,22 @@ export async function writeFile(
   );
 }
 
+/** 删除文件；目录需 recursive */
+export async function deleteFile(
+  id: string,
+  path: string,
+  opts?: { recursive?: boolean },
+): Promise<void> {
+  const q = new URLSearchParams({ path });
+  if (opts?.recursive) q.set("recursive", "1");
+  await parse(
+    await fetch(
+      `/api/sandboxes/${encodeURIComponent(id)}/files?${q.toString()}`,
+      { method: "DELETE" },
+    ),
+  );
+}
+
 export function formatDuration(sec: number) {
   if (sec < 60) return `${sec}s`;
   const m = Math.floor(sec / 60);

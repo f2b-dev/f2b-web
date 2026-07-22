@@ -22,3 +22,12 @@ export async function POST(req: Request, ctx: Ctx) {
     { method: "POST", body: body || "{}" },
   );
 }
+
+export async function DELETE(req: Request, ctx: Ctx) {
+  const { id } = await ctx.params;
+  const q = new URL(req.url).search;
+  return proxyToSandbox(
+    `/v1/sandboxes/${encodeURIComponent(id)}/files${q}`,
+    { method: "DELETE" },
+  );
+}

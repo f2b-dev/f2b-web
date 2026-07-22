@@ -29,6 +29,7 @@ import { Textarea } from "@f2b/ui";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@f2b/ui";
 import { Alert, AlertDescription } from "@f2b/ui";
 import {
+  deleteFile,
   formatDuration,
   getSandbox,
   killSandbox,
@@ -198,6 +199,32 @@ export default function SandboxDetailPage() {
       setSelectedPath(path);
       setEditor("");
       setEditorDirty(false);
+    } catch (e) {
+      setFilesError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setFilesBusy(false);
+    }
+  }
+
+  async function onDeleteEntry(entry: FileEntry) {
+    if (!sandbox) return;
+    const label =
+      entry.type === "dir"
+        ? `递归删除目录 ${entry.path}？`
+        : `删除文件 ${entry.path}？`;
+    if (!confirm(label)) return;
+    setFilesBusy(true);
+    setFilesError(null);
+    try {
+      await deleteFile(sandbox.id, entry.path, {
+        recursive: entry.type === "dir",
+      });
+      if (selectedPath === entry.path || selectedPath?.startsWith(entry.path + "/")) {
+        setSelectedPath(null);
+        setEditor("");
+        setEditorDirty(false);
+      }
+      await loadFiles(cwd);
     } catch (e) {
       setFilesError(e instanceof Error ? e.message : String(e));
     } finally {
@@ -572,10 +599,13 @@ export default function SandboxDetailPage() {
                           </li>
                         ) : (
                           files.map((f) => (
-                            <li key={f.path}>
+                            <li
+                              key={f.path}
+                              className="flex items-center gap-1 pr-1"
+                            >
                               <button
                                 type="button"
-                                className={`flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-muted/50 ${
+                                className={`flex min-w-0 flex-1 items-center gap-2 px-3 py-2 text-left text-sm hover:bg-muted/50 ${
                                   selectedPath === f.path ? "bg-brand/5" : ""
                                 }`}
                                 onClick={() => void openEntry(f)}
@@ -595,6 +625,17 @@ export default function SandboxDetailPage() {
                                   </span>
                                 ) : null}
                               </button>
+                              <Button
+                                type="button"
+                                size="sm"
+                                variant="ghost"
+                                className="h-8 w-8 shrink-0 p-0 text-muted-foreground hover:text-destructive"
+                                disabled={filesBusy}
+                                title="删除"
+                                onClick={() => void onDeleteEntry(f)}
+                              >
+                                <Trash2 className="h-3.5 w-3.5" />
+                              </Button>
                             </li>
                           ))
                         )}

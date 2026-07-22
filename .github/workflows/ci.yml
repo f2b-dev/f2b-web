@@ -15,22 +15,44 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v4
+      # monorepo 用 file:../../../f2b-spec → 工作区根需并列 f2b-web + f2b-spec
+      - name: Checkout f2b-web
+        uses: actions/checkout@v4
+        with:
+          path: f2b-web
+
+      - name: Checkout f2b-spec
+        uses: actions/checkout@v4
+        with:
+          repository: f2b-dev/f2b-spec
+          path: f2b-spec
+
       - uses: actions/setup-node@v4
         with:
           node-version: "22"
+
       - run: corepack enable && corepack prepare pnpm@9.15.0 --activate
-      - run: pnpm install --frozen-lockfile
+
+      - name: Install deps
+        working-directory: f2b-web
+        run: pnpm install --frozen-lockfile
+
       - name: Install ripgrep (guards)
         run: sudo apt-get update -qq && sudo apt-get install -y -qq ripgrep
-      - run: pnpm typecheck
+
+      - name: Typecheck
+        working-directory: f2b-web
+        run: pnpm typecheck
 
       - name: 硬约束回归（无 antd / 无管理密钥进 client）
+        working-directory: f2b-web
         run: bash scripts/ci-guards.sh
+
       - name: BFF 路由清单 ↔ app/api 对齐
+        working-directory: f2b-web
         run: pnpm check:bff-map
 
-  # Fake 全路径：sandbox + tunnel + web BFF → e2e:bff（create→命令/文件→模板→用量→密钥→隧道→kill）
+  # Fake 全路径：sandbox + tunnel + web BFF → e2e:bff
   e2e-bff:
     runs-on: ubuntu-latest
     timeout-minutes: 25

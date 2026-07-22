@@ -6,6 +6,7 @@
 
 ### Added
 
+- Playwright `e2e:ui` 增补密钥 / 模板 / 用量页渲染
 - `e2e:bff` 页面冒烟扩展：`/console` · keys · templates · usage
 - Playwright `e2e:ui` 增补列表 `projectId` 筛选（含状态「已销毁」排除存活）
 - `e2e:bff` 列表 `projectId` / `status` 筛选断言（含 running 命中、killed 排除存活）

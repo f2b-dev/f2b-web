@@ -99,4 +99,17 @@ test.describe("console smoke", () => {
       await request.delete(`/api/sandboxes/${id}`);
     }
   });
+
+  test("密钥 / 模板 / 用量页可渲染", async ({ page }) => {
+    for (const [path, heading] of [
+      ["/console/keys", /密钥|API/],
+      ["/console/templates", /模板/],
+      ["/console/usage", /用量/],
+    ] as const) {
+      await page.goto(path);
+      await expect(page.getByRole("heading", { name: heading }).first()).toBeVisible({
+        timeout: 30_000,
+      });
+    }
+  });
 });

@@ -21,6 +21,8 @@
 
 ### Changed
 
+- 依赖安全：`next` 钉到 `15.5.21`（覆盖 Dependabot 高危/中危）；`@playwright/test` → `1.55.1`；`console-shell` peer `next` ^15.5.21
+
 - 控制台顶栏徽章按 `/healthz` 的 `backend` 动态展示（如 `fake · BFF → sandbox`）
 - 营销 `/docs` 页：端口 13200/13287、SDK 示例与诚实数据面说明；去掉过时 mock / 内核宣传
 

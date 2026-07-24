@@ -112,4 +112,14 @@ test.describe("console smoke", () => {
       });
     }
   });
+
+  test("官网与定价页无数据面品牌泄露", async ({ page }) => {
+    for (const path of ["/", "/pricing", "/docs", "/products/sandbox"] as const) {
+      await page.goto(path);
+      await expect(page.locator("body")).toBeVisible({ timeout: 30_000 });
+      const text = await page.locator("body").innerText();
+      expect(text).not.toMatch(/CubeSandbox|腾讯 Cube|腾讯云|已连接真集群/);
+      expect(text).toMatch(/灵境云/);
+    }
+  });
 });

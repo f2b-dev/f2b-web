@@ -6,6 +6,10 @@ NAME="e2e-$(date +%s | tail -c 6)"
 
 echo "== pages =="
 for p in \
+  / \
+  /pricing \
+  /docs \
+  /products/sandbox \
   /console \
   /console/sandboxes \
   /console/sandboxes/new \
